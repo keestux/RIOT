@@ -195,11 +195,11 @@ int spi_init_master(spi_t dev, spi_conf_t conf, spi_speed_t speed)
                        |  SERCOM_SPI_CTRLA_DIPO(dipo)
                        |  cpha
                        |  cpol;
-    while (spi_dev->SYNCBUSY.reg) {}	// ???? not needed
+    while (spi_dev->SYNCBUSY.reg) {}    // ???? not needed
 
     /* datasize 0 => 8 bits */
     spi_dev->CTRLB.reg = (SERCOM_SPI_CTRLB_CHSIZE(0) | SERCOM_SPI_CTRLB_RXEN);
-    while (spi_dev->SYNCBUSY.reg) {}	// ???? Only wait for clear of spi_dev->SYNCBUSY.bit.CTRLB
+    while (spi_dev->SYNCBUSY.reg) {}    // ???? Only wait for clear of spi_dev->SYNCBUSY.bit.CTRLB
 
     /* enable */
     _spi_poweron(spi_dev);
@@ -281,12 +281,12 @@ void spi_poweron(spi_t dev)
     switch(dev) {
 #if SPI_0_EN
     case SPI_0:
-	_spi_poweron(&SPI_0_DEV);
+        _spi_poweron(&SPI_0_DEV);
         break;
 #endif
 #if SPI_1_EN
     case SPI_1:
-	_spi_poweron(&SPI_1_DEV);
+        _spi_poweron(&SPI_1_DEV);
         break;
 #endif
     }
