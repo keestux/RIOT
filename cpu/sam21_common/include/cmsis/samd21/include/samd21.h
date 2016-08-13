@@ -104,6 +104,8 @@
   #include "samd21j15b.h"
 #elif defined(__SAMD21J16B__) || defined(__ATSAMD21J16B__)
   #include "samd21j16b.h"
+#elif defined(__SAMR21G18A__) || defined(__ATSAMR21G18A__)
+  #include "samr21g18a.h"
 #else
   #error Library does not support the specified device.
 #endif

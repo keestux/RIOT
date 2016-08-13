@@ -18,13 +18,12 @@
 #ifndef CPU_CONF_H
 #define CPU_CONF_H
 
+/* workaround for define in newlib headers */
+#undef LITTLE_ENDIAN
+
 #include "cpu_conf_common.h"
 
-#ifdef SAM0_FAM_SAMR21
-#include "samr21.h"
-#else
-#error "ERROR: Unsupported SAM) family. Must be one of: SAM0_FAM_SAMR21"
-#endif
+#include "samd21.h"
 
 #ifdef __cplusplus
 extern "C" {

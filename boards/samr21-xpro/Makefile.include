@@ -1,6 +1,5 @@
 # define the cpu used by SAMR21 Xplained Pro board
 export CPU = samd21
-export SAM0_FAM = samr21
 export CPU_MODEL = samr21x18a
 CFLAGS += -D__SAMR21G18A__
 
