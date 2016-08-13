@@ -18,6 +18,9 @@
 #ifndef CPU_CONF_H
 #define CPU_CONF_H
 
+/* workaround for define in newlib headers */
+#undef LITTLE_ENDIAN
+
 #include "cpu_conf_common.h"
 
 #include "samd21.h"
