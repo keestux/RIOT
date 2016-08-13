@@ -20,11 +20,7 @@
 
 #include "cpu_conf_common.h"
 
-#ifdef SAM0_FAM_SAMR21
-#include "samr21.h"
-#else
-#error "ERROR: Unsupported SAM) family. Must be one of: SAM0_FAM_SAMR21"
-#endif
+#include "samd21.h"
 
 #ifdef __cplusplus
 extern "C" {
