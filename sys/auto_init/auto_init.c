@@ -88,6 +88,10 @@
 #include "net/asymcute.h"
 #endif
 
+#ifdef MODULE_AT45DB
+#include "at45db.h"
+#endif
+
 #ifdef MODULE_SOCK_DTLS
 #include "net/sock/dtls.h"
 #endif
