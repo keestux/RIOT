@@ -28,11 +28,26 @@ extern "C" {
 #endif
 
 /**
- * @brief Device descriptor for the AT45DB sensor
+ * @brief Chip details AT45DB series
  */
 typedef struct {
-    spi_t spi;              /**< SPI device which is used */
-    spi_speed_t spi_speed;  /**< SPI speed to use */
+    size_t page_addr_bits;      /**< Number of bits for a page address */
+    size_t nr_pages;            /**< Number of pages, must be (1 << page_addr_bits) */
+    size_t page_size;           /**< Size of a page */
+    size_t page_size_alt;       /**< Alternative size of a page */
+    size_t page_size_bits;      /**< Number of bits to address inside a page */
+} at45db_chip_details_t;
+extern const at45db_chip_details_t at45db161e;
+extern const at45db_chip_details_t at45db641e;
+
+/**
+ * @brief Device descriptor for the AT45DB series data flash
+ */
+typedef struct {
+    spi_t spi;                  /**< SPI device which is used */
+    spi_cs_t cs;
+    spi_clk_t clk;              /**< SPI clock (speed) to use */
+    const at45db_chip_details_t *details;
 } at45db_t;
 
 /**
@@ -40,7 +55,9 @@ typedef struct {
  */
 typedef struct {
     spi_t spi;
-    spi_speed_t spi_speed;  /**< SPI speed to use */
+    spi_cs_t cs;
+    spi_clk_t clk;
+    const at45db_chip_details_t *details;
 } at45db_params_t;
 
 /**
@@ -53,11 +70,40 @@ void at45db_auto_init(void);
  *
  * @param[out] dev          Initialized device descriptor of AT45DB device
  * @param[in]  spi          SPI bus the sensor is connected to
+ * @param[in]  cs           GPIO pin that is connected to the CS pin
  *
  * @return                  0 on success
  * @return                  -1 if given SPI is not enabled in board config
  */
-int at45db_init(at45db_t *dev, spi_t spi);
+int at45db_init(at45db_t *dev, spi_t spi, gpio_t cs, const at45db_chip_details_t *details);
+
+/**
+ * @brief Read data from buffer
+ *
+ * @param[in]  dev          The device descriptor of AT45DB device
+ * @param[in]  bufno        The dataflash buffer number (can only be 1 or 2)
+ * @param[out] data         Pointer to the destination buffer
+ * @param[out] data_size    Size of the data
+ *
+ * @return                  0 on success
+ * @return                  -1 invalid buffer number
+ * @return                  -2 data could not be loaded
+ */
+int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size);
+
+/**
+ * @brief Read page into df buffer
+ *
+ * @param[in]  dev          The device descriptor of AT45DB device
+ * @param[in]  page         The dataflash page number
+ * @param[in]  bufno        The dataflash buffer number (can only be 1 or 2)
+ *
+ * @return                  0 on success
+ * @return                  -1 invalid buffer number
+ * @return                  -2 invalid page number
+ * @return                  -3 data not read
+ */
+int at45db_page2buf(at45db_t *dev, size_t page, size_t bufno);
 
 #ifdef __cplusplus
 }

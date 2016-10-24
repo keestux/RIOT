@@ -34,12 +34,12 @@ extern "C" {
 #ifndef AT45DB_PARAM_SPI_DEV
 #define AT45DB_PARAM_SPI_DEV         (0)
 #endif
-#ifndef AT45DB_PARAM_SPI_SPEED
-#define AT45DB_PARAM_SPI_SPEED       SPI_SPEED_10MHZ
+#ifndef AT45DB_PARAM_SPI_CLK
+#define AT45DB_PARAM_SPI_CLK         SPI_CLK_10MHZ
 #endif
 
 #define AT45DB_PARAMS_DEFAULT        {.spi = AT45DB_PARAM_SPI_DEV,  \
-                                      .spi_speed = AT45DB_PARAM_SPI_SPEED }
+                                      .clk = AT45DB_PARAM_SPI_CLK }
 /**@}*/
 
 /**
