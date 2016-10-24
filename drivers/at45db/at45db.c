@@ -124,6 +124,27 @@ int at45db_page2buf(at45db_t *dev, size_t page, size_t bufno)
     return 0;
 }
 
+int at45db_erase_page(at45db_t *dev, size_t page)
+{
+    DEBUG("AT45DB: erase page#%d\n", page);
+    uint8_t cmd[4];
+    if (!is_valid_page(page, dev->details)) {
+        return -2;
+    }
+    cmd[0] = CMD_PAGE_ERASE;
+    cmd[1] = get_page_addr_byte0(page, dev->details->page_size_bits);
+    cmd[2] = get_page_addr_byte1(page, dev->details->page_size_bits);
+    cmd[3] = get_page_addr_byte2(page, dev->details->page_size_bits);
+    DEBUG("AT45DB: cmd=%02X%02X%02X%02X\n", cmd[0], cmd[1], cmd[2], cmd[3]);
+
+    lock(dev);
+    spi_transfer_bytes(dev->spi, dev->cs, false, cmd, NULL, sizeof(cmd));
+    done(dev);
+    DEBUG("AT45DB: wait till ready\n");
+    wait_till_ready(dev);
+    return 0;
+}
+
 /**
  * @brief   Read the Manufacturer and Device ID
  *

@@ -44,8 +44,10 @@
 static at45db_t dev;
 
 static int cmd_read_page(int argc, char **argv);
+static int cmd_erase_page(int argc, char **argv);
 static const shell_command_t shell_commands[] = {
     { "rp", "Read a page", cmd_read_page },
+    { "ep", "Erase a page", cmd_erase_page },
     { NULL, NULL, NULL }
 };
 
@@ -98,6 +100,23 @@ static int cmd_read_page(int argc, char **argv)
     dump_buffer("page", buffer, buffer_size);
 
     free(buffer);
+
+    return 0;
+}
+
+static int cmd_erase_page(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("usage: %s <page no>\n", argv[0]);
+        return 1;
+    }
+
+    int page_nr = atoi(argv[1]);
+
+    if (at45db_erase_page(&dev, page_nr) < 0) {
+        printf("ERROR: cannot erase page #%d\n", page_nr);
+        return 1;
+    }
 
     return 0;
 }

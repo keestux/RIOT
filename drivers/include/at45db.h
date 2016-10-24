@@ -105,6 +105,17 @@ int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size
  */
 int at45db_page2buf(at45db_t *dev, size_t page, size_t bufno);
 
+/**
+ * @brief Erase a page
+ *
+ * @param[in]  dev          The device descriptor of AT45DB device
+ * @param[in]  page         The dataflash page number
+ *
+ * @return                  0 on success
+ * @return                  -2 invalid page number
+ */
+int at45db_erase_page(at45db_t *dev, size_t page);
+
 #ifdef __cplusplus
 }
 #endif
