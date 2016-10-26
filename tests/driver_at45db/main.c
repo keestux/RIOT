@@ -43,14 +43,21 @@
 
 static at45db_t dev;
 
+static int cmd_read_all_pages(int argc, char **argv);
 static int cmd_read_page(int argc, char **argv);
 static int cmd_erase_page(int argc, char **argv);
+static int cmd_disable_dump(int argc, char **argv);
+static int cmd_enable_dump(int argc, char **argv);
 static const shell_command_t shell_commands[] = {
+    { "rall", "Read all pages", cmd_read_all_pages },
     { "rp", "Read a page", cmd_read_page },
     { "ep", "Erase a page", cmd_erase_page },
+    { "dis", "Disable dump", cmd_disable_dump },
+    { "ena", "Enable dump", cmd_enable_dump },
     { NULL, NULL, NULL }
 };
 
+static bool enable_dump_buffer;
 static void dump_buffer(const char *txt, uint8_t *buffer, size_t size);
 
 int main(void)
@@ -65,6 +72,7 @@ int main(void)
         puts("[Failed]\n");
         return 1;
     }
+    dev.clk = TEST_AT45DB_SPI_SPEED;
 
     /* run the shell */
     char line_buf[SHELL_DEFAULT_BUFSIZE];
@@ -80,6 +88,7 @@ static int cmd_read_page(int argc, char **argv)
         return 1;
     }
 
+    uint32_t start;
     size_t bufno = 1;
     uint8_t *buffer;
     /* TODO size of buffer depends on selected DataFlash chip */
@@ -87,17 +96,65 @@ static int cmd_read_page(int argc, char **argv)
     int page_nr = atoi(argv[1]);
     buffer = malloc(buffer_size);
 
+    start = xtimer_now();
     if (at45db_page2buf(&dev, page_nr, bufno) < 0) {
         printf("ERROR: cannot read page #%d to buf#%d\n", page_nr, bufno);
         return 1;
     }
+    printf("at45db_page2buf time = %lu\n", (long)(xtimer_now() - start));
 
+    start = xtimer_now();
     if (at45db_read_buf(&dev, bufno, buffer, buffer_size) < 0) {
         printf("ERROR: cannot read buf#%d\n", bufno);
         return 1;
     }
+    printf("at45db_read_buf time = %lu\n", (long)(xtimer_now() - start));
 
-    dump_buffer("page", buffer, buffer_size);
+    if (enable_dump_buffer) {
+        dump_buffer("page", buffer, buffer_size);
+    }
+
+    free(buffer);
+
+    return 0;
+}
+
+static int cmd_read_all_pages(int argc, char **argv)
+{
+    uint32_t start;
+    size_t bufno = 1;
+    uint8_t *buffer;
+    /* TODO size of buffer depends on selected DataFlash chip */
+    const size_t buffer_size = 526;
+    const size_t nr_pages = 4096;
+    buffer = malloc(buffer_size);
+
+    start = xtimer_now();
+    for (size_t page = 0; page < nr_pages; page++) {
+        if (!enable_dump_buffer) {
+            if ((page % 16) == 0) {
+                putchar('.');
+                fflush(stdout);
+            }
+        }
+
+        if (at45db_page2buf(&dev, page, bufno) < 0) {
+            printf("ERROR: cannot read page #%d to buf#%d\n", page, bufno);
+            return 1;
+        }
+
+        if (at45db_read_buf(&dev, bufno, buffer, buffer_size) < 0) {
+            printf("ERROR: cannot read buf#%d\n", bufno);
+            return 1;
+        }
+
+        if (enable_dump_buffer) {
+            /* Only 16 bytes */
+            dump_buffer("page", buffer, 16);
+        }
+    }
+    printf("\n");
+    printf("reading all pages, time = %lu\n", (long)(xtimer_now() - start));
 
     free(buffer);
 
@@ -121,16 +178,25 @@ static int cmd_erase_page(int argc, char **argv)
     return 0;
 }
 
+static int cmd_disable_dump(int argc, char **argv)
+{
+    enable_dump_buffer = false;
+    return 0;
+}
+
+static int cmd_enable_dump(int argc, char **argv)
+{
+    enable_dump_buffer = true;
+    return 0;
+}
+
 static void dump_buffer(const char *txt, uint8_t *buffer, size_t size)
 {
     size_t ix;
     for (ix = 0; ix < size; ix++) {
-        if (ix != 0 && (ix % 16) == 0) {
+        printf("%02X", buffer[ix]);
+        if ((ix + 1) == size || (((ix + 1) % 16) == 0)) {
             printf("\n");
         }
-        printf("%02X", buffer[ix]);
-    }
-    if ((ix % 16) != 0) {
-        printf("\n");
     }
 }

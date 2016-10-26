@@ -36,6 +36,7 @@ typedef struct {
     size_t page_size;           /**< Size of a page */
     size_t page_size_alt;       /**< Alternative size of a page */
     size_t page_size_bits;      /**< Number of bits to address inside a page */
+    uint8_t density_code;       /**< The density code in byte 1 Device Details */
 } at45db_chip_details_t;
 extern const at45db_chip_details_t at45db161e;
 extern const at45db_chip_details_t at45db641e;

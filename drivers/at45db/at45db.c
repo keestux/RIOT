@@ -23,7 +23,7 @@
  * @{
  */
 #define CMD_FLASH_TO_BUF1       0x53    /**< Flash page to buffer 1 transfer */
-#define CMD_FLASH_TO_BUF2       0x55    /**< Flash page to buffer 1 transfer */
+#define CMD_FLASH_TO_BUF2       0x55    /**< Flash page to buffer 2 transfer */
 #define CMD_PAGE_ERASE          0x81    /**< Page erase */
 #define CMD_READ_MFGID          0x9F    /**< Read Manufacturer and Device ID */
 #define CMD_BUF1_READ           0xD4    /**< Buffer 1 read */
@@ -33,7 +33,6 @@
 
 #define MANUF_ADESTO            0x1F    /**< Manufacturer Adesto */
 #define FAM_CODE_AT45D          0x01    /**< AT45Dxxx Family */
-#define DENS_CODE_16M           0x06    /**< 16Mbit */
 
 const at45db_chip_details_t at45db161e = {
     .page_addr_bits = 12,
@@ -41,13 +40,15 @@ const at45db_chip_details_t at45db161e = {
     .page_size = 528,
     .page_size_alt = 512,
     .page_size_bits = 10,
+    .density_code = 0x6,
 };
 const at45db_chip_details_t at45db641e = {
-    .page_addr_bits = 16,
+    .page_addr_bits = 15,
     .nr_pages = 32768,
     .page_size = 264,
     .page_size_alt = 256,
     .page_size_bits = 9,
+    .density_code = 0x8,
 };
 
 static void check_id(at45db_t *dev);
@@ -88,6 +89,7 @@ int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size
     cmd = bufno == 1 ? CMD_BUF1_READ : CMD_BUF2_READ;
 
     lock(dev);
+    wait_till_ready(dev);
     spi_transfer_byte(dev->spi, dev->cs, true, cmd);
     spi_transfer_byte(dev->spi, dev->cs, true, 0x00);           /* don't care */
     spi_transfer_byte(dev->spi, dev->cs, true, addr >> 8);      /* addr, ms byte */
@@ -101,7 +103,7 @@ int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size
 
 int at45db_page2buf(at45db_t *dev, size_t page, size_t bufno)
 {
-    DEBUG("AT45DB: page#%d to buf%d\n", page, bufno);
+    // DEBUG("AT45DB: page#%d to buf%d\n", page, bufno);
     uint8_t cmd[4];
     if (!is_valid_bufno(bufno)) {
         return -1;
@@ -113,13 +115,11 @@ int at45db_page2buf(at45db_t *dev, size_t page, size_t bufno)
     cmd[1] = get_page_addr_byte0(page, dev->details->page_size_bits);
     cmd[2] = get_page_addr_byte1(page, dev->details->page_size_bits);
     cmd[3] = get_page_addr_byte2(page, dev->details->page_size_bits);
-    DEBUG("AT45DB: cmd=%02X%02X%02X%02X\n", cmd[0], cmd[1], cmd[2], cmd[3]);
+    // DEBUG("AT45DB: cmd=%02X%02X%02X%02X\n", cmd[0], cmd[1], cmd[2], cmd[3]);
 
     lock(dev);
     spi_transfer_bytes(dev->spi, dev->cs, false, cmd, NULL, sizeof(cmd));
     done(dev);
-    DEBUG("AT45DB: wait till ready\n");
-    wait_till_ready(dev);
 
     return 0;
 }
@@ -139,9 +139,8 @@ int at45db_erase_page(at45db_t *dev, size_t page)
 
     lock(dev);
     spi_transfer_bytes(dev->spi, dev->cs, false, cmd, NULL, sizeof(cmd));
-    done(dev);
-    DEBUG("AT45DB: wait till ready\n");
     wait_till_ready(dev);
+    done(dev);
     return 0;
 }
 
@@ -188,7 +187,7 @@ static void check_id(at45db_t *dev)
     }
 
     /* Flash size */
-    if ((mfdid[1] & 0x1F) != DENS_CODE_16M) {
+    if ((mfdid[1] & 0x1F) != dev->details->density_code) {
         /* TODO */
     }
 }
@@ -267,12 +266,11 @@ static uint16_t get_full_status(at45db_t *dev)
 static inline void wait_till_ready(at45db_t *dev)
 {
     uint8_t status;
-    lock(dev);
     spi_transfer_byte(dev->spi, dev->cs, true, CMD_READ_STATUS);
     do {
-        spi_transfer_bytes(dev->spi, dev->cs, false, NULL, &status, sizeof(status));
+        status = spi_transfer_byte(dev->spi, dev->cs, true, 0);
     } while ((status & 0x80) == 0);
-    done(dev);
+    spi_transfer_byte(dev->spi, dev->cs, false, 0);
 }
 
 static inline void lock(at45db_t *dev)
