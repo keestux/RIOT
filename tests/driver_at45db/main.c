@@ -65,7 +65,7 @@ int main(void)
     puts("AT45DB test application starting...");
 
     puts("Initializing AT45DB device descriptor... ");
-    if (at45db_init(&dev, TEST_AT45DB_SPI_DEV, TEST_AT45DB_SPI_CS, &TEST_AT45DB_DETAILS) == 0) {
+    if (at45db_init(&dev, TEST_AT45DB_SPI_DEV, TEST_AT45DB_SPI_CS, TEST_AT45DB_VARIANT) == 0) {
         puts("[OK]");
     }
     else {
@@ -73,6 +73,7 @@ int main(void)
         return 1;
     }
     dev.clk = TEST_AT45DB_SPI_SPEED;
+    printf("SPI clock = %ld\n", (long)dev.clk);
 
     /* run the shell */
     char line_buf[SHELL_DEFAULT_BUFSIZE];
@@ -92,7 +93,7 @@ static int cmd_read_page(int argc, char **argv)
     size_t bufno = 1;
     uint8_t *buffer;
     /* TODO size of buffer depends on selected DataFlash chip */
-    const size_t buffer_size = 526;
+    const size_t buffer_size = at45db_get_page_size(&dev);
     int page_nr = atoi(argv[1]);
     buffer = malloc(buffer_size);
 
@@ -104,7 +105,7 @@ static int cmd_read_page(int argc, char **argv)
     printf("at45db_page2buf time = %lu\n", (long)(xtimer_now() - start));
 
     start = xtimer_now();
-    if (at45db_read_buf(&dev, bufno, buffer, buffer_size) < 0) {
+    if (at45db_read_buf(&dev, bufno, 0, buffer, buffer_size) < 0) {
         printf("ERROR: cannot read buf#%d\n", bufno);
         return 1;
     }
@@ -125,8 +126,8 @@ static int cmd_read_all_pages(int argc, char **argv)
     size_t bufno = 1;
     uint8_t *buffer;
     /* TODO size of buffer depends on selected DataFlash chip */
-    const size_t buffer_size = 526;
-    const size_t nr_pages = 4096;
+    const size_t buffer_size = at45db_get_page_size(&dev);
+    const size_t nr_pages = at45db_get_nr_pages(&dev);
     buffer = malloc(buffer_size);
 
     start = xtimer_now();
@@ -143,7 +144,7 @@ static int cmd_read_all_pages(int argc, char **argv)
             return 1;
         }
 
-        if (at45db_read_buf(&dev, bufno, buffer, buffer_size) < 0) {
+        if (at45db_read_buf(&dev, bufno, 0, buffer, buffer_size) < 0) {
             printf("ERROR: cannot read buf#%d\n", bufno);
             return 1;
         }

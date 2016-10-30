@@ -34,7 +34,19 @@
 #define MANUF_ADESTO            0x1F    /**< Manufacturer Adesto */
 #define FAM_CODE_AT45D          0x01    /**< AT45Dxxx Family */
 
-const at45db_chip_details_t at45db161e = {
+/**
+ * @brief Chip details AT45DB series
+ */
+struct at45db_chip_details_s {
+    size_t page_addr_bits;      /**< Number of bits for a page address */
+    size_t nr_pages;            /**< Number of pages, must be (1 << page_addr_bits) */
+    size_t page_size;           /**< Size of a page */
+    size_t page_size_alt;       /**< Alternative size of a page */
+    size_t page_size_bits;      /**< Number of bits to address inside a page */
+    uint8_t density_code;       /**< The density code in byte 1 Device Details */
+};
+
+static const at45db_chip_details_t at45db161e = {
     .page_addr_bits = 12,
     .nr_pages = 4096,
     .page_size = 528,
@@ -42,7 +54,7 @@ const at45db_chip_details_t at45db161e = {
     .page_size_bits = 10,
     .density_code = 0x6,
 };
-const at45db_chip_details_t at45db641e = {
+static const at45db_chip_details_t at45db641e = {
     .page_addr_bits = 15,
     .nr_pages = 32768,
     .page_size = 264,
@@ -51,19 +63,27 @@ const at45db_chip_details_t at45db641e = {
     .density_code = 0x8,
 };
 
+static const at45db_chip_details_t *at45db_select_variant(at45db_variant_t variant);
+
 static void check_id(at45db_t *dev);
 static inline bool is_valid_bufno(size_t bufno);
-static inline bool is_valid_page(size_t page, const at45db_chip_details_t *details);
-static uint8_t get_page_addr_byte0(uint16_t page, size_t shift);
-static uint8_t get_page_addr_byte1(uint16_t page, size_t shift);
-static uint8_t get_page_addr_byte2(uint16_t page, size_t shift);
+static inline bool is_valid_page(size_t pagenr, const at45db_chip_details_t *details);
+static uint8_t get_page_addr_byte0(uint16_t pagenr, size_t shift);
+static uint8_t get_page_addr_byte1(uint16_t pagenr, size_t shift);
+static uint8_t get_page_addr_byte2(uint16_t pagenr, size_t shift);
 static uint16_t get_full_status(at45db_t *dev);
 static inline void wait_till_ready(at45db_t *dev);
 static inline void lock(at45db_t *dev);
 static inline void done(at45db_t *dev);
 
-int at45db_init(at45db_t *dev, spi_t spi, gpio_t cs, const at45db_chip_details_t *details)
+int at45db_init(at45db_t *dev, spi_t spi, gpio_t cs, at45db_variant_t variant)
 {
+    const at45db_chip_details_t *details;
+    details = at45db_select_variant(variant);
+    if (details == NULL) {
+        return -2;
+    }
+
     /* Save device details */
     dev->spi = spi;
     dev->cs = cs;
@@ -79,10 +99,25 @@ int at45db_init(at45db_t *dev, spi_t spi, gpio_t cs, const at45db_chip_details_t
     return 0;
 }
 
-int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size)
+static const at45db_chip_details_t *at45db_select_variant(at45db_variant_t variant)
+{
+    const at45db_chip_details_t * retval = NULL;
+    switch (variant) {
+    case AT45DB161E:
+        retval = &at45db161e;
+        break;
+    case AT45DB641E:
+        retval = &at45db641e;
+        break;
+    default:
+        break;
+    }
+    return retval;
+}
+
+int at45db_read_buf(at45db_t *dev, size_t bufno, size_t start, uint8_t *data, size_t data_size)
 {
     uint8_t cmd;
-    uint16_t addr = 0;
     if (!is_valid_bufno(bufno)) {
         return -1;
     }
@@ -92,8 +127,8 @@ int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size
     wait_till_ready(dev);
     spi_transfer_byte(dev->spi, dev->cs, true, cmd);
     spi_transfer_byte(dev->spi, dev->cs, true, 0x00);           /* don't care */
-    spi_transfer_byte(dev->spi, dev->cs, true, addr >> 8);      /* addr, ms byte */
-    spi_transfer_byte(dev->spi, dev->cs, true, addr);           /* addr, ls byte */
+    spi_transfer_byte(dev->spi, dev->cs, true, start >> 8);      /* addr, ms byte */
+    spi_transfer_byte(dev->spi, dev->cs, true, start);           /* addr, ls byte */
     spi_transfer_byte(dev->spi, dev->cs, true, 0x00);           /* don't care */
     spi_transfer_bytes(dev->spi, dev->cs, false, NULL, data, data_size);
     done(dev);
@@ -101,20 +136,20 @@ int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size
     return 0;
 }
 
-int at45db_page2buf(at45db_t *dev, size_t page, size_t bufno)
+int at45db_page2buf(at45db_t *dev, size_t pagenr, size_t bufno)
 {
-    // DEBUG("AT45DB: page#%d to buf%d\n", page, bufno);
+    // DEBUG("AT45DB: page#%d to buf%d\n", pagenr, bufno);
     uint8_t cmd[4];
     if (!is_valid_bufno(bufno)) {
         return -1;
     }
-    if (!is_valid_page(page, dev->details)) {
+    if (!is_valid_page(pagenr, dev->details)) {
         return -2;
     }
     cmd[0] = bufno == 1 ? CMD_FLASH_TO_BUF1 : CMD_FLASH_TO_BUF2;
-    cmd[1] = get_page_addr_byte0(page, dev->details->page_size_bits);
-    cmd[2] = get_page_addr_byte1(page, dev->details->page_size_bits);
-    cmd[3] = get_page_addr_byte2(page, dev->details->page_size_bits);
+    cmd[1] = get_page_addr_byte0(pagenr, dev->details->page_size_bits);
+    cmd[2] = get_page_addr_byte1(pagenr, dev->details->page_size_bits);
+    cmd[3] = get_page_addr_byte2(pagenr, dev->details->page_size_bits);
     // DEBUG("AT45DB: cmd=%02X%02X%02X%02X\n", cmd[0], cmd[1], cmd[2], cmd[3]);
 
     lock(dev);
@@ -124,17 +159,17 @@ int at45db_page2buf(at45db_t *dev, size_t page, size_t bufno)
     return 0;
 }
 
-int at45db_erase_page(at45db_t *dev, size_t page)
+int at45db_erase_page(at45db_t *dev, size_t pagenr)
 {
-    DEBUG("AT45DB: erase page#%d\n", page);
+    DEBUG("AT45DB: erase page#%d\n", pagenr);
     uint8_t cmd[4];
-    if (!is_valid_page(page, dev->details)) {
+    if (!is_valid_page(pagenr, dev->details)) {
         return -2;
     }
     cmd[0] = CMD_PAGE_ERASE;
-    cmd[1] = get_page_addr_byte0(page, dev->details->page_size_bits);
-    cmd[2] = get_page_addr_byte1(page, dev->details->page_size_bits);
-    cmd[3] = get_page_addr_byte2(page, dev->details->page_size_bits);
+    cmd[1] = get_page_addr_byte0(pagenr, dev->details->page_size_bits);
+    cmd[2] = get_page_addr_byte1(pagenr, dev->details->page_size_bits);
+    cmd[3] = get_page_addr_byte2(pagenr, dev->details->page_size_bits);
     DEBUG("AT45DB: cmd=%02X%02X%02X%02X\n", cmd[0], cmd[1], cmd[2], cmd[3]);
 
     lock(dev);
@@ -142,6 +177,16 @@ int at45db_erase_page(at45db_t *dev, size_t page)
     wait_till_ready(dev);
     done(dev);
     return 0;
+}
+
+size_t at45db_get_page_size(at45db_t *dev)
+{
+    return dev && dev->details ? dev->details->page_size : 0;
+}
+
+size_t at45db_get_nr_pages(at45db_t *dev)
+{
+    return dev && dev->details ? dev->details->nr_pages : 0;
 }
 
 /**
@@ -197,9 +242,9 @@ static inline bool is_valid_bufno(size_t bufno)
     return bufno == 1 || bufno == 2;
 }
 
-static inline bool is_valid_page(size_t page, const at45db_chip_details_t *details)
+static inline bool is_valid_page(size_t pagenr, const at45db_chip_details_t *details)
 {
-    return page < details->nr_pages;
+    return pagenr < details->nr_pages;
 }
 
 /*
@@ -232,18 +277,18 @@ static inline bool is_valid_page(size_t page, const at45db_chip_details_t *detai
  *  32109876 54321098 76543210
  *  ----aaaa aaaaaaa- --------
  */
-static uint8_t get_page_addr_byte0(uint16_t page, size_t shift)
+static uint8_t get_page_addr_byte0(uint16_t pagenr, size_t shift)
 {
     // More correct would be to use a 24 bits number
     // shift to the left by number of bits. But the uint16_t can be considered
     // as if it was already shifted by 8.
-    return (page << (shift - 8)) >> 8;
+    return (pagenr << (shift - 8)) >> 8;
 }
-static uint8_t get_page_addr_byte1(uint16_t page, size_t shift)
+static uint8_t get_page_addr_byte1(uint16_t pagenr, size_t shift)
 {
-    return page << (shift - 8);
+    return pagenr << (shift - 8);
 }
-static uint8_t get_page_addr_byte2(uint16_t page, size_t shift)
+static uint8_t get_page_addr_byte2(uint16_t pagenr, size_t shift)
 {
     return 0;
 }

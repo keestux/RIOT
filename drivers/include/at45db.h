@@ -27,19 +27,15 @@
 extern "C" {
 #endif
 
+typedef enum {
+    AT45DB161E,                 /**< 16Mbit, 4096 pages of 526 bytes */
+    AT45DB641E,                 /**< 64Mbit, 32768 pages of 268 bytes */
+} at45db_variant_t;
+
 /**
  * @brief Chip details AT45DB series
  */
-typedef struct {
-    size_t page_addr_bits;      /**< Number of bits for a page address */
-    size_t nr_pages;            /**< Number of pages, must be (1 << page_addr_bits) */
-    size_t page_size;           /**< Size of a page */
-    size_t page_size_alt;       /**< Alternative size of a page */
-    size_t page_size_bits;      /**< Number of bits to address inside a page */
-    uint8_t density_code;       /**< The density code in byte 1 Device Details */
-} at45db_chip_details_t;
-extern const at45db_chip_details_t at45db161e;
-extern const at45db_chip_details_t at45db641e;
+typedef struct at45db_chip_details_s at45db_chip_details_t;
 
 /**
  * @brief Device descriptor for the AT45DB series data flash
@@ -52,7 +48,7 @@ typedef struct {
 } at45db_t;
 
 /**
- * @brief Device initialization parameters
+ * @brief Device auto initialization parameters
  */
 typedef struct {
     spi_t spi;
@@ -72,31 +68,34 @@ void at45db_auto_init(void);
  * @param[out] dev          Initialized device descriptor of AT45DB device
  * @param[in]  spi          SPI bus the sensor is connected to
  * @param[in]  cs           GPIO pin that is connected to the CS pin
+ * @param[in]  variant      The chip variant
  *
  * @return                  0 on success
- * @return                  -1 if given SPI is not enabled in board config
+ * @return                  -1 given SPI is not enabled in board config
+ * @return                  -2 chip variant was not selected, or unkown
  */
-int at45db_init(at45db_t *dev, spi_t spi, gpio_t cs, const at45db_chip_details_t *details);
+int at45db_init(at45db_t *dev, spi_t spi, gpio_t cs, at45db_variant_t variant);
 
 /**
  * @brief Read data from buffer
  *
  * @param[in]  dev          The device descriptor of AT45DB device
  * @param[in]  bufno        The dataflash buffer number (can only be 1 or 2)
+ * @param[in]  start        The start address in the dataflash buffer
  * @param[out] data         Pointer to the destination buffer
- * @param[out] data_size    Size of the data
+ * @param[in]  data_size    Size of the data
  *
  * @return                  0 on success
  * @return                  -1 invalid buffer number
  * @return                  -2 data could not be loaded
  */
-int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size);
+int at45db_read_buf(at45db_t *dev, size_t bufno, size_t start, uint8_t *data, size_t data_size);
 
 /**
  * @brief Read page into df buffer
  *
  * @param[in]  dev          The device descriptor of AT45DB device
- * @param[in]  page         The dataflash page number
+ * @param[in]  pagenr       The dataflash page number
  * @param[in]  bufno        The dataflash buffer number (can only be 1 or 2)
  *
  * @return                  0 on success
@@ -104,18 +103,36 @@ int at45db_read_buf(at45db_t *dev, size_t bufno, uint8_t *data, size_t data_size
  * @return                  -2 invalid page number
  * @return                  -3 data not read
  */
-int at45db_page2buf(at45db_t *dev, size_t page, size_t bufno);
+int at45db_page2buf(at45db_t *dev, size_t pagenr, size_t bufno);
 
 /**
  * @brief Erase a page
  *
  * @param[in]  dev          The device descriptor of AT45DB device
- * @param[in]  page         The dataflash page number
+ * @param[in]  pagenr       The dataflash page number
  *
  * @return                  0 on success
  * @return                  -2 invalid page number
  */
-int at45db_erase_page(at45db_t *dev, size_t page);
+int at45db_erase_page(at45db_t *dev, size_t pagenr);
+
+/**
+ * @brief Get page size of the selected AT45DB
+ *
+ * @param[in]  dev          The device descriptor of AT45DB device
+ *
+ * @returns                 The page size, value 0 indicates unknown
+ */
+size_t at45db_get_page_size(at45db_t *dev);
+
+/**
+ * @brief Get number of pages of the selected AT45DB
+ *
+ * @param[in]  dev          The device descriptor of AT45DB device
+ *
+ * @returns                 The number of pages, value 0 indicates unknown
+ */
+size_t at45db_get_nr_pages(at45db_t *dev);
 
 #ifdef __cplusplus
 }
