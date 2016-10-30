@@ -46,12 +46,14 @@ static at45db_t dev;
 static int cmd_read_all_pages(int argc, char **argv);
 static int cmd_read_page(int argc, char **argv);
 static int cmd_erase_page(int argc, char **argv);
+static int cmd_security_register(int argc, char **argv);
 static int cmd_disable_dump(int argc, char **argv);
 static int cmd_enable_dump(int argc, char **argv);
 static const shell_command_t shell_commands[] = {
     { "rall", "Read all pages", cmd_read_all_pages },
     { "rp", "Read a page", cmd_read_page },
     { "ep", "Erase a page", cmd_erase_page },
+    { "sr", "Read Security Register", cmd_security_register },
     { "dis", "Disable dump", cmd_disable_dump },
     { "ena", "Enable dump", cmd_enable_dump },
     { NULL, NULL, NULL }
@@ -92,7 +94,6 @@ static int cmd_read_page(int argc, char **argv)
     uint32_t start;
     size_t bufno = 1;
     uint8_t *buffer;
-    /* TODO size of buffer depends on selected DataFlash chip */
     const size_t buffer_size = at45db_get_page_size(&dev);
     int page_nr = atoi(argv[1]);
     buffer = malloc(buffer_size);
@@ -100,6 +101,7 @@ static int cmd_read_page(int argc, char **argv)
     start = xtimer_now();
     if (at45db_page2buf(&dev, page_nr, bufno) < 0) {
         printf("ERROR: cannot read page #%d to buf#%d\n", page_nr, bufno);
+        free(buffer);
         return 1;
     }
     printf("at45db_page2buf time = %lu\n", (long)(xtimer_now() - start));
@@ -107,6 +109,7 @@ static int cmd_read_page(int argc, char **argv)
     start = xtimer_now();
     if (at45db_read_buf(&dev, bufno, 0, buffer, buffer_size) < 0) {
         printf("ERROR: cannot read buf#%d\n", bufno);
+        free(buffer);
         return 1;
     }
     printf("at45db_read_buf time = %lu\n", (long)(xtimer_now() - start));
@@ -125,7 +128,6 @@ static int cmd_read_all_pages(int argc, char **argv)
     uint32_t start;
     size_t bufno = 1;
     uint8_t *buffer;
-    /* TODO size of buffer depends on selected DataFlash chip */
     const size_t buffer_size = at45db_get_page_size(&dev);
     const size_t nr_pages = at45db_get_nr_pages(&dev);
     buffer = malloc(buffer_size);
@@ -141,11 +143,13 @@ static int cmd_read_all_pages(int argc, char **argv)
 
         if (at45db_page2buf(&dev, page, bufno) < 0) {
             printf("ERROR: cannot read page #%d to buf#%d\n", page, bufno);
+            free(buffer);
             return 1;
         }
 
         if (at45db_read_buf(&dev, bufno, 0, buffer, buffer_size) < 0) {
             printf("ERROR: cannot read buf#%d\n", bufno);
+            free(buffer);
             return 1;
         }
 
@@ -175,6 +179,25 @@ static int cmd_erase_page(int argc, char **argv)
         printf("ERROR: cannot erase page #%d\n", page_nr);
         return 1;
     }
+
+    return 0;
+}
+
+static int cmd_security_register(int argc, char **argv)
+{
+    uint8_t *buffer;
+    const size_t buffer_size = 128;
+    buffer = malloc(buffer_size);
+
+    if (at45db_security_register(&dev, buffer, buffer_size) < 0) {
+        printf("ERROR: cannot read security register\n");
+        free(buffer);
+        return 1;
+    }
+
+    dump_buffer("security register", buffer, buffer_size);
+
+    free(buffer);
 
     return 0;
 }

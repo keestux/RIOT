@@ -24,11 +24,12 @@
  */
 #define CMD_FLASH_TO_BUF1       0x53    /**< Flash page to buffer 1 transfer */
 #define CMD_FLASH_TO_BUF2       0x55    /**< Flash page to buffer 2 transfer */
+#define CMD_READ_SECURITY_REGISTER 0x77 /**< Read Security Register */
 #define CMD_PAGE_ERASE          0x81    /**< Page erase */
 #define CMD_READ_MFGID          0x9F    /**< Read Manufacturer and Device ID */
 #define CMD_BUF1_READ           0xD4    /**< Buffer 1 read */
 #define CMD_BUF2_READ           0xD6    /**< Buffer 2 read */
-#define CMD_READ_STATUS         0xD7    /**< Status register */
+#define CMD_READ_STATUS         0xD7    /**< Read Status Register */
 /** @} */
 
 #define MANUF_ADESTO            0x1F    /**< Manufacturer Adesto */
@@ -121,14 +122,19 @@ int at45db_read_buf(at45db_t *dev, size_t bufno, size_t start, uint8_t *data, si
     if (!is_valid_bufno(bufno)) {
         return -1;
     }
+    if (data == NULL || data_size == 0) {
+        /* Not sure if this makes sense, but it validates the function arguments */
+        return 0;
+    }
+
     cmd = bufno == 1 ? CMD_BUF1_READ : CMD_BUF2_READ;
 
     lock(dev);
     wait_till_ready(dev);
     spi_transfer_byte(dev->spi, dev->cs, true, cmd);
     spi_transfer_byte(dev->spi, dev->cs, true, 0x00);           /* don't care */
-    spi_transfer_byte(dev->spi, dev->cs, true, start >> 8);      /* addr, ms byte */
-    spi_transfer_byte(dev->spi, dev->cs, true, start);           /* addr, ls byte */
+    spi_transfer_byte(dev->spi, dev->cs, true, start >> 8);     /* addr, ms byte */
+    spi_transfer_byte(dev->spi, dev->cs, true, start);          /* addr, ls byte */
     spi_transfer_byte(dev->spi, dev->cs, true, 0x00);           /* don't care */
     spi_transfer_bytes(dev->spi, dev->cs, false, NULL, data, data_size);
     done(dev);
@@ -176,6 +182,28 @@ int at45db_erase_page(at45db_t *dev, size_t pagenr)
     spi_transfer_bytes(dev->spi, dev->cs, false, cmd, NULL, sizeof(cmd));
     wait_till_ready(dev);
     done(dev);
+    return 0;
+}
+
+int at45db_security_register(at45db_t *dev, uint8_t *data, size_t data_size)
+{
+    uint8_t cmd;
+
+    if (data == NULL || data_size == 0) {
+        /* Not sure if this makes sense, but it validates the function arguments */
+        return 0;
+    }
+
+    cmd = CMD_READ_SECURITY_REGISTER;
+    lock(dev);
+    wait_till_ready(dev);
+    spi_transfer_byte(dev->spi, dev->cs, true, cmd);
+    spi_transfer_byte(dev->spi, dev->cs, true, 0x00);           /* don't care */
+    spi_transfer_byte(dev->spi, dev->cs, true, 0x00);           /* don't care */
+    spi_transfer_byte(dev->spi, dev->cs, true, 0x00);           /* don't care */
+    spi_transfer_bytes(dev->spi, dev->cs, false, NULL, data, data_size);
+    done(dev);
+
     return 0;
 }
 

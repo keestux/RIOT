@@ -117,6 +117,18 @@ int at45db_page2buf(at45db_t *dev, size_t pagenr, size_t bufno);
 int at45db_erase_page(at45db_t *dev, size_t pagenr);
 
 /**
+ * @brief Read the Security Register
+ *
+ * @param[in]  dev          The device descriptor of AT45DB device
+ * @param[out] data         Pointer to the destination buffer
+ * @param[in]  data_size    Size of the data
+ *
+ * @return                  0 on success
+ * @return                  -1 error
+ */
+int at45db_security_register(at45db_t *dev, uint8_t *data, size_t data_size);
+
+/**
  * @brief Get page size of the selected AT45DB
  *
  * @param[in]  dev          The device descriptor of AT45DB device
