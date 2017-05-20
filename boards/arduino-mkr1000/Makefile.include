@@ -1,6 +1,7 @@
 # define the cpu used by Arduino/Genuino MKR1000 board
 export CPU = samd21
 export CPU_MODEL = samd21g18a
+export CPU_FAM_SUB = samd21
 
 #export needed for flash rule
 export PORT_LINUX ?= /dev/ttyACM0

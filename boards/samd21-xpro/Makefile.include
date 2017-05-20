@@ -1,6 +1,7 @@
 # define the cpu used by SAMD21 Xplained Pro board
 export CPU = samd21
 export CPU_MODEL = samd21j18a
+export CPU_FAM_SUB = samd21
 
 # set default port depending on operating system
 PORT_LINUX ?= /dev/ttyACM0

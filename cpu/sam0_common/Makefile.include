@@ -1,5 +1,12 @@
 # Define the CPU family so we can differentiate between them in the code
-CFLAGS += -DCPU_FAM_$(shell echo $(CPU_FAM) | tr 'a-z-' 'A-Z_')
+FAM = $(shell echo $(CPU_FAM) | tr 'a-z-' 'A-Z_')
+CFLAGS += -DCPU_FAM_$(FAM)
+FAM_SUB = $(shell echo $(CPU_FAM_SUB) | tr 'a-z-' 'A-Z_')
+CFLAGS += -DCPU_FAM_SUB_$(FAM_SUB)
+
+# export the CPU submodel
+MODEL = $(shell echo $(CPU_MODEL) | tr 'a-z' 'A-Z')
+export CFLAGS += -D__$(MODEL)__
 
 # this CPU implementation doesn't use CMSIS initialization
 export CFLAGS += -DDONT_USE_CMSIS_INIT
