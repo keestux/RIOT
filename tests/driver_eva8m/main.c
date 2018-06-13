@@ -31,10 +31,12 @@ int main(void)
 {
     eva8m_t dev;
     int result;
+    uint8_t b;
 
     puts("EVA8M test application\n");
 
     GPS_ENABLE_ON;
+    //xtimer_usleep(MAINLOOP_DELAY);
 
     result = eva8m_init(&dev, &eva8m_params[0]);
     if (result == EVA8M_ERR_I2C) {
@@ -47,6 +49,10 @@ int main(void)
     }
 
     while (1) {
-        xtimer_usleep(MAINLOOP_DELAY);
+        eva8m_read_byte(&dev, &b);
+        if (b != 0xFF) {
+            char c = (char)b;
+            putchar(c);
+        }
     }
 }

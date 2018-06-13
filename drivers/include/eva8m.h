@@ -46,7 +46,7 @@ typedef struct {
  * @brief   Device descriptor for the EVA 8/8M
  */
 typedef struct {
-   eva8m_params_t params;               /**< Device Parameters */
+    eva8m_params_t params;               /**< Device Parameters */
 } eva8m_t;
 
 /**
@@ -69,6 +69,30 @@ enum {
  * @return                  EVA8M_ERR_NODEV
  */
 int eva8m_init(eva8m_t* dev, const eva8m_params_t* params);
+
+/**
+ * @brief   Get number of available bytes in the given EVA8M device
+ *
+ * @param[in] dev           The device descriptor of EVA8M device
+ * @param[out] avail        Pointer to the resulting number
+ *
+ * @return                  EVA8M_OK on success
+ * @return                  EVA8M_ERR_I2C
+ * @return                  EVA8M_ERR_NODEV
+ */
+int eva8m_available(eva8m_t* dev, uint16_t* avail);
+
+/**
+ * @brief   Read a byte from the given EVA8M device
+ *
+ * @param[in] dev           The device descriptor of EVA8M device
+ * @param[out] b            Pointer to the resulting byte
+ *
+ * @return                  EVA8M_OK on success
+ * @return                  EVA8M_ERR_I2C
+ * @return                  EVA8M_ERR_NODEV
+ */
+int eva8m_read_byte(eva8m_t* dev, uint8_t* b);
 
 #ifdef __cplusplus
 }
