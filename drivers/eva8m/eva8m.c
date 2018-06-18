@@ -32,7 +32,7 @@ static int _eva8m_exists(eva8m_t* dev);
 
 int eva8m_init(eva8m_t* dev, const eva8m_params_t* params)
 {
-    int result = EVA8M_OK;
+    int result = 0;
 
     dev->params = *params;
 
@@ -61,7 +61,7 @@ static int _eva8m_exists(eva8m_t* dev)
 
     i2c_release(dev->params.i2c_dev);
 
-    return EVA8M_OK;
+    return 0;
 }
 
 int eva8m_available(eva8m_t* dev, uint16_t* avail)

@@ -50,23 +50,13 @@ typedef struct {
 } eva8m_t;
 
 /**
- * @brief   Status and error return codes
- */
-enum {
-    EVA8M_OK           =  0,            /**< everything was fine */
-    EVA8M_ERR_I2C      = -1,            /**< error initializing the I2C bus */
-    EVA8M_ERR_NODEV    = -2,            /**< did not detect EVA 8 or 8M */
-};
-
-/**
  * @brief   Initialize the given EVA8M device
  *
  * @param[out] dev          Initialized device descriptor of EVA8M device
  * @param[in]  params       The parameters for the EVA8M device (sampling rate, etc)
  *
- * @return                  EVA8M_OK on success
- * @return                  EVA8M_ERR_I2C
- * @return                  EVA8M_ERR_NODEV
+ * @return                  0 on success
+ * @return                  I2C error code
  */
 int eva8m_init(eva8m_t* dev, const eva8m_params_t* params);
 
@@ -76,9 +66,8 @@ int eva8m_init(eva8m_t* dev, const eva8m_params_t* params);
  * @param[in] dev           The device descriptor of EVA8M device
  * @param[out] avail        Pointer to the resulting number
  *
- * @return                  EVA8M_OK on success
- * @return                  EVA8M_ERR_I2C
- * @return                  EVA8M_ERR_NODEV
+ * @return                  0 on success
+ * @return                  I2C error code
  */
 int eva8m_available(eva8m_t* dev, uint16_t* avail);
 
@@ -88,9 +77,8 @@ int eva8m_available(eva8m_t* dev, uint16_t* avail);
  * @param[in] dev           The device descriptor of EVA8M device
  * @param[out] b            Pointer to the resulting byte
  *
- * @return                  EVA8M_OK on success
- * @return                  EVA8M_ERR_I2C
- * @return                  EVA8M_ERR_NODEV
+ * @return                  0 on success
+ * @return                  I2C error code
  */
 int eva8m_read_byte(eva8m_t* dev, uint8_t* b);
 
