@@ -46,6 +46,7 @@ static char poller2_stack[THREAD_STACKSIZE_MAIN];
 static void *poller(void *arg)
 {
     eva8m_t* dev = (eva8m_t*)arg;
+    int counter = 0;
 
     printf("poller\n");
     if (dev) {
@@ -67,6 +68,11 @@ static void *poller(void *arg)
                         }
                     }
                 }
+            }
+            if (++counter > 100) {
+                eva8m_portconfig_t portcfg;
+                counter = 0;
+                result = eva8m_get_port_config(dev, &portcfg);
             }
             // Wait a bit to avoid wasting cpu cycles
             // TODO. How long should we wait?
@@ -96,13 +102,10 @@ static void *poller2(void *arg)
                 printf("\n<empty>");
                 break;
             }
-            else if (c == '\n') {
-                puts("\\n");
-            }
-            else if (c == '\r') {
-            }
-            else if (c >= ' ' && c <= '~') {
-                printf("%c", c);
+            else if (c == '\n'
+                     || c == '\r'
+                     || (c >= ' ' && c <= '~')) {
+                putchar(c);
             }
             else {
                 printf("\\x%02x", (unsigned char)c);
