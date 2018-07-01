@@ -29,7 +29,6 @@
 #include "debug.h"
 
 static int _eva8m_exists(eva8m_t* dev);
-static int _eva8m_match_class_id(eva8m_t* dev, uint8_t msg_class, uint8_t msg_id);
 
 int eva8m_init(eva8m_t* dev, const eva8m_params_t* params)
 {
@@ -105,7 +104,7 @@ int eva8m_get_port_config(eva8m_t* dev, eva8m_portconfig_t* portcfg)
     /* Receive the requested config */
     if (result == 0) {
         (void)eva8m_receive_ubx_packet(dev);
-        if (_eva8m_match_class_id(dev, 0x06, 0x00)) {
+        if (eva8m_received_class_id(dev) == UBX_CFG_PRT) {
             // DEBUG("[EVA8M] received port_config\n");
             // DEBUG("[EVA8M] %02x %02x %02x %02x\n", dev->buffer[2], dev->buffer[3], dev->buffer[4], dev->buffer[5]);
             memcpy(portcfg, &dev->buffer[6], sizeof(*portcfg));
@@ -114,10 +113,10 @@ int eva8m_get_port_config(eva8m_t* dev, eva8m_portconfig_t* portcfg)
         }
         /* ACK / NACK */
         (void)eva8m_receive_ubx_packet(dev);
-        if (_eva8m_match_class_id(dev, 0x05, 0x01)) {
+        if (eva8m_received_class_id(dev) == UBX_ACK_ACK) {
             // DEBUG("[EVA8M] received ACK\n");
         }
-        else if (_eva8m_match_class_id(dev, 0x05, 0x00)) {
+        else if (eva8m_received_class_id(dev) == UBX_ACK_NAK) {
             DEBUG("[EVA8M] received NACK\n");
         }
     }
@@ -144,11 +143,13 @@ int eva8m_send_ubx_packet(eva8m_t* dev, eva8m_class_id_t msg_class_id, uint8_t* 
 
     class_id_len[0] = (uint8_t)(msg_class_id >> 8);
     class_id_len[1] = (uint8_t)(msg_class_id & 0xFF);
-    if (buffer) {
+    if (buffer && buflen > 0) {
+        /* Length in little endian */
         class_id_len[2] = buflen & 0xFF;
         class_id_len[3] = (buflen >> 8) & 0xFF;
     }
     else {
+        /* No buffer, this automativally identicates a GET */
         class_id_len[2] = 0;
         class_id_len[3] = 0;
     }
@@ -314,13 +315,6 @@ static void _eva8m_reset_sm(eva8m_t* dev)
     dev->prot = EVA8M_PROT_UNKNOWN;
     dev->computed_ck_a = 0;
     dev->computed_ck_b = 0;
-}
-
-static int _eva8m_match_class_id(eva8m_t* dev, uint8_t msg_class, uint8_t msg_id)
-{
-    /* Assuming the received buffer contains B5,62,cls,id */
-    return (dev->buffer[2] == msg_class)
-        && (dev->buffer[3] == msg_id);
 }
 
 int eva8m_receive_ubx_packet(eva8m_t* dev /* , timeout */)

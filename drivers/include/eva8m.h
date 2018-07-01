@@ -96,6 +96,9 @@ typedef enum {
  */
 typedef enum {
     UBX_NAV_PVT = 0x0107,
+    UBX_NAV_SAT = 0x0135,
+    UBX_ACK_NAK = 0x0500,
+    UBX_ACK_ACK = 0x0501,
     UBX_CFG_PRT = 0x0600,
     UBX_CFG_MSG = 0x0601,
 } eva8m_class_id_t;
@@ -120,7 +123,7 @@ typedef struct {
 } eva8m_t;
 
 /**
- * @brief   Port Configuration
+ * @brief   Port Configuration (CFG-PRT)
  */
 typedef struct {
     uint8_t     portID;
@@ -133,6 +136,44 @@ typedef struct {
     uint16_t    flags;
     uint8_t     reserved3[2];
 } eva8m_portconfig_t;
+
+/**
+ * @brief   NAV-PVT data structure
+ */
+typedef struct {
+    uint32_t    iTOW;           /**<  0 GPS time of week of the navigation epoch. */
+    uint16_t    year;           /**< 04 Year UTC */
+    uint8_t     month;          /**< 06 Month, range 1..12 (UTC) */
+    uint8_t     day;            /**< 07 Day of month, range 1..31 (UTC) */
+    uint8_t     hour;           /**< 08 Hour of day, range 0..23 (UTC) */
+    uint8_t     minute;         /**< 09 Minute of hour, range 0..59 (UTC) */
+    uint8_t     seconds;        /**< 10 Seconds of minute, range 0..60 (UTC) */
+    uint8_t     valid;          /**< 11 Validity Flags */
+    uint32_t    tAcc;           /**< 12 Time accuracy estimate (UTC) */
+    int32_t     nano;           /**< 16 Fraction of second, range -1e9 .. 1e9 (UTC) */
+    uint8_t     fixType;        /**< 20 GNSSfix Type: 0: no fix, 1: dead reckoning only, ... */
+    uint8_t     flags;          /**< 21 Fix status flags */
+    uint8_t     flags2;         /**< 22 Additional flags */
+    uint8_t     numSV;          /**< 23 Number of satellites used in Nav Solution */
+    int32_t     lon;            /**< 24 Longitude */
+    int32_t     lat;            /**< 28 Latitude */
+    int32_t     height;         /**< 32 Height above ellipsoid */
+    int32_t     hMSL;           /**< 36 Height above mean sea level */
+    uint32_t    hAcc;           /**< 40 Horizontal accuracy estimate */
+    uint32_t    vAcc;           /**< 44 Vertical accuracy estimate */
+    int32_t     velN;           /**< 48 NED north velocity */
+    int32_t     velE;           /**< 52 NED east velocity */
+    int32_t     velD;           /**< 56 NED down velocity */
+    int32_t     gSpeed;         /**< 60 Ground Speed (2-D) */
+    int32_t     headMot;        /**< 64 Heading of motion (2-D) */
+    uint32_t    sAcc;           /**< 68 Speed accuracy estimate */
+    uint32_t    headAcc;        /**< 72 Heading Accuracy Estimate (both motion and vehicle) */
+    uint16_t    pDOP;           /**< 76 Position DOP */
+    uint8_t     reserved1[6];   /**< 78 Reserved */
+    int32_t     headVeh;        /**< 84 Heading of vehicle (2-D) */
+    int16_t     magDec;         /**< 88 Magnetic declination */
+    uint16_t    magAcc;         /**< 88 Magnetic declination accuracy */
+} eva8m_nav_pvt_t;
 
 /**
  * @brief   Initialize the given EVA8M device
@@ -223,6 +264,13 @@ int eva8m_receive_ubx_packet(eva8m_t* dev /* , timeout */);
  * @return                  I2C error code
  */
 int eva8m_send_cfg_msg(eva8m_t* dev, eva8m_class_id_t msg_class_id, uint8_t rate);
+
+static inline eva8m_class_id_t eva8m_received_class_id(eva8m_t* dev) __attribute__((always_inline));
+static inline eva8m_class_id_t eva8m_received_class_id(eva8m_t* dev)
+{
+    /* Assuming the received buffer contains B5,62,cls,id */
+    return (eva8m_class_id_t)((uint16_t)(dev->buffer[2] << 8) | (uint16_t)dev->buffer[3]);
+}
 
 #ifdef __cplusplus
 }
