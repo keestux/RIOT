@@ -19,6 +19,12 @@
  * @details     The device communication is describe in
  *              "u-blox 8 / u-blox M8 Receiver Description" UBX-13003221
  *
+ *              The device periodically sends out info in one of two forms, a
+ *              line of text terminated by <CR><LF>, or a UBX packet. The first
+ *              should follow the NMEA protocol format. The latter has a UBlox
+ *              specific format, called UBX. The device can also respond
+ *              to commands, and then the response is always in UBX packets.
+ *
  * @author      Kees Bakker <kees@sodaq.com>
  */
 
@@ -33,6 +39,15 @@ extern "C" {
 #endif
 
 /**
+ * @brief   The size of the pre-allocated buffer
+ *
+ * The buffer is part of eva8m_t. It is meant as the first
+ * place to store incoming packets. The size should be big enough
+ * to receive NMEA protocol packets, and/or UBX packets.
+ */
+#define EVA8M_BUFFER_SIZE       256
+
+/**
  * @brief   Parameters for the u-blox EVA 8/8M series.
  *
  * These parameters are needed to configure the device at startup.
@@ -43,11 +58,65 @@ typedef struct {
     uint8_t i2c_addr;                   /**< I2C address */
 } eva8m_params_t;
 
+#define EVA8M_UBX_HEADER_BYTE1  0xB5
+#define EVA8M_UBX_HEADER_BYTE2  0x62
+
+/**
+ * @brief   States for the receiving state machine
+ */
+typedef enum {
+    EVA8M_RS_START,
+
+    EVA8M_RS_SAW_DOLLAR,
+    EVA8M_RS_SAW_CR,
+
+    EVA8M_RS_SAW_HEADER_BYTE1,
+    EVA8M_RS_SAW_HEADER,
+    EVA8M_RS_SAW_LENGTH,
+    EVA8M_RS_SAW_PAYLOAD,
+    EVA8M_RS_SAW_CK_A,
+
+    EVA8M_RS_SAW_END
+} eva8m_receive_state_t;
+
+/**
+ * @brief   States for the receiving state machine
+ */
+typedef enum {
+    EVA8M_PROT_UNKNOWN,
+    EVA8M_PROT_NMEA,
+    EVA8M_PROT_UBX,
+} eva8m_protocol_t;
+
+/**
+ * @brief Enum for Class/ID
+ *
+ * The numbers are such that class is in the upper byte,
+ * just like it is in the datasheet.
+ */
+typedef enum {
+    UBX_NAV_PVT = 0x0107,
+    UBX_CFG_PRT = 0x0600,
+    UBX_CFG_MSG = 0x0601,
+} eva8m_class_id_t;
+
 /**
  * @brief   Device descriptor for the EVA 8/8M
  */
 typedef struct {
     eva8m_params_t params;               /**< Device Parameters */
+    uint8_t buffer[EVA8M_BUFFER_SIZE];
+    uint8_t buffer_overflow;
+    uint8_t checksum_error;
+    eva8m_protocol_t prot;
+    eva8m_receive_state_t state;
+    uint16_t state_header_counter;
+    uint16_t state_payload_length;
+    uint16_t state_payload_counter;
+    uint8_t received_ck_a;
+    uint8_t received_ck_b;
+    uint8_t computed_ck_a;
+    uint8_t computed_ck_b;
 } eva8m_t;
 
 /**
@@ -120,14 +189,40 @@ int eva8m_get_port_config(eva8m_t* dev, eva8m_portconfig_t* portcfg);
  * @brief   Send UBX packet
  *
  * @param[in] dev           The device descriptor of EVA8M device
- * @param[in] msg_class     The message class
- * @param[in] msg_id        The message id
- * @param[in] payload       Pointer to the payload
+ * @param[in] msg_class_id  The message class and id
+ * @param[in] buffer        Pointer to the payload
+ * @param[in] buflen        The size of the payload
  *
  * @return                  0 on success
  * @return                  I2C error code
  */
-int eva8m_send_ubx_packet(eva8m_t* dev, uint8_t msg_class, uint8_t msg_id, uint8_t* buffer, size_t buflen);
+int eva8m_send_ubx_packet(eva8m_t* dev, eva8m_class_id_t msg_class_id, uint8_t* buffer, size_t buflen);
+
+/**
+ * @brief   Receive UBX packet
+ *
+ * Use the buffer of @a dev to store the result.
+ *
+ * @param[in] dev           The device descriptor of EVA8M device
+ *
+ * @return                  0 on success
+ * @return                  I2C error code
+ * @return                  ? timeout
+ */
+int eva8m_receive_ubx_packet(eva8m_t* dev /* , timeout */);
+
+/**
+ * @brief   Send CFG-MSG
+ *
+ * @param[in] dev           The device descriptor of EVA8M device
+ * @param[in] msg_class     The message class for the CFG-MSG
+ * @param[in] msg_id        The message id for the CFG-MSG
+ * @param[in] rate          The rate for the CFG-MSG
+ *
+ * @return                  0 on success
+ * @return                  I2C error code
+ */
+int eva8m_send_cfg_msg(eva8m_t* dev, eva8m_class_id_t msg_class_id, uint8_t rate);
 
 #ifdef __cplusplus
 }

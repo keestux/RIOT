@@ -35,82 +35,61 @@ static char rx_buf[BUFSIZE];
 static ringbuffer_t rx_ringbuf;
 
 #define POLLER_PRIO     (THREAD_PRIORITY_MAIN - 1)
-#define POLLER2_PRIO    (THREAD_PRIORITY_MAIN - 2)
 
 static kernel_pid_t poller_pid;
 static char poller_stack[THREAD_STACKSIZE_MAIN];
 
-static kernel_pid_t poller2_pid;
-static char poller2_stack[THREAD_STACKSIZE_MAIN];
+static void dump_ubx(eva8m_t* dev)
+{
+    uint8_t* ptr = dev->buffer;
+    printf("%02X", *ptr++);
+    printf(" %02X", *ptr++);
+    printf(" class=%02X", *ptr++);
+    printf(" id=%02X", *ptr++);
+    uint16_t length = *ptr++;
+    length |= (*ptr++ >> 8);
+    printf(" length=%u", length);
+    for (uint16_t ix = 0; ix < length; ix++) {
+        if (((ix % 8) == 0)) {
+            printf("\n");
+        }
+        printf(" %02X", *ptr++);
+    }
+    printf("\n");
+}
 
 static void *poller(void *arg)
 {
     eva8m_t* dev = (eva8m_t*)arg;
-    int counter = 0;
+    eva8m_portconfig_t portcfg;
 
     printf("poller\n");
     if (dev) {
+        int result;
+        /* Start by switching off outNmea */
+        result = eva8m_get_port_config(dev, &portcfg);
+        if (result == 0) {
+            portcfg.outProtoMask = 1;
+            //portcfg.outProtoMask &= ~(2);
+        }
+        result = eva8m_send_ubx_packet(dev, UBX_CFG_PRT, (uint8_t*)&portcfg, sizeof(portcfg));
+
+        result = eva8m_send_cfg_msg(dev, UBX_NAV_PVT, 1);
+
         while (1) {
-            int result;
-            uint16_t nr_avail;
-            result = eva8m_available(dev, &nr_avail);
+            result = eva8m_receive_ubx_packet(dev);
             if (result == 0) {
-                while (nr_avail > 0 && !ringbuffer_full(&rx_ringbuf)) {
-                    uint8_t b;
-                    eva8m_read_byte(dev, &b);
-                    nr_avail--;
-                    if (b != 0xFF) {
-                        char c = (char)b;
-                        (void)ringbuffer_add_one(&rx_ringbuf, c);
-                        if (c == '\n') {
-                            msg_t msg;
-                            msg_send(&msg, poller2_pid);
-                        }
-                    }
+                if (dev->prot == EVA8M_PROT_NMEA) {
+                    printf("%s\n", dev->buffer);
+                }
+                else if (dev->prot == EVA8M_PROT_UBX) {
+                    dump_ubx(dev);
+                }
+                else {
+                    printf("-- unknown packet --\n");
                 }
             }
-            if (++counter > 100) {
-                eva8m_portconfig_t portcfg;
-                counter = 0;
-                result = eva8m_get_port_config(dev, &portcfg);
-            }
-            // Wait a bit to avoid wasting cpu cycles
-            // TODO. How long should we wait?
-            xtimer_usleep(10 * 1000u);
         }
-    }
-
-    /* this should never be reached */
-    return NULL;
-}
-
-static void *poller2(void *arg)
-{
-    (void)arg;
-    msg_t msg;
-    msg_t msg_queue[8];
-    msg_init_queue(msg_queue, sizeof(msg_queue)/sizeof(msg_queue[0]));
-
-    printf("poller2\n");
-    while (1) {
-        msg_receive(&msg);
-        int c;
-        do {
-            c = ringbuffer_get_one(&rx_ringbuf);
-            if (c < 0) {
-                /* buffer empty */
-                printf("\n<empty>");
-                break;
-            }
-            else if (c == '\n'
-                     || c == '\r'
-                     || (c >= ' ' && c <= '~')) {
-                putchar(c);
-            }
-            else {
-                printf("\\x%02x", (unsigned char)c);
-            }
-        } while (c != '\n');
     }
 
     /* this should never be reached */
@@ -137,8 +116,6 @@ int main(void)
     ringbuffer_init(&rx_ringbuf, rx_buf, BUFSIZE);
 
     /* start the poller thread */
-    poller2_pid = thread_create(poller2_stack, sizeof(poller2_stack),
-                               POLLER2_PRIO, 0, poller2, NULL, "poller2");
     poller_pid = thread_create(poller_stack, sizeof(poller_stack),
                                POLLER_PRIO, 0, poller, &dev, "poller");
 
