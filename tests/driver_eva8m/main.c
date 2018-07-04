@@ -98,18 +98,20 @@ static void *poller(void *arg)
         }
         result = eva8m_send_ubx_packet(dev, UBX_CFG_PRT, (uint8_t*)&portcfg, sizeof(portcfg));
 
+        /* NAV-PVT every 1 seconds */
         printf("UBX_NAV_PVT\n");
         result = eva8m_send_cfg_msg(dev, UBX_NAV_PVT, 1);
-        result = eva8m_receive_ubx_packet(dev);
+        result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
         dump_ubx(dev);
 
+        /* NAV-SAT Every 10 seconds */
         printf("UBX_NAV_SAT\n");
         result = eva8m_send_cfg_msg(dev, UBX_NAV_SAT, 10);
-        result = eva8m_receive_ubx_packet(dev);
+        result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
         dump_ubx(dev);
 
         while (1) {
-            result = eva8m_receive_ubx_packet(dev);
+            result = eva8m_receive_ubx_packet(dev, 1100);
             if (result == 0) {
                 if (dev->prot == EVA8M_PROT_NMEA) {
                     printf("%s\n", dev->buffer);

@@ -48,6 +48,11 @@ extern "C" {
 #define EVA8M_BUFFER_SIZE       256
 
 /**
+ * @brief   The default value for receive timeout
+ */
+#define EVA8M_DEFAULT_TIMEOUT   100
+
+/**
  * @brief   Parameters for the u-blox EVA 8/8M series.
  *
  * These parameters are needed to configure the device at startup.
@@ -245,12 +250,13 @@ int eva8m_send_ubx_packet(eva8m_t* dev, eva8m_class_id_t msg_class_id, uint8_t* 
  * Use the buffer of @a dev to store the result.
  *
  * @param[in] dev           The device descriptor of EVA8M device
+ * @param[in] timeout       Number of milliseconds timeout
  *
  * @return                  0 on success
  * @return                  I2C error code
- * @return                  ? timeout
+ * @return                  -ETIMEDOUT no packet received in time
  */
-int eva8m_receive_ubx_packet(eva8m_t* dev /* , timeout */);
+int eva8m_receive_ubx_packet(eva8m_t* dev, uint16_t timeout);
 
 /**
  * @brief   Send CFG-MSG

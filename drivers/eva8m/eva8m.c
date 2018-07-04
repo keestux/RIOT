@@ -18,6 +18,7 @@
  * @}
  */
 
+#include <errno.h>
 #include <string.h>
 
 #include "board.h"
@@ -103,8 +104,8 @@ int eva8m_get_port_config(eva8m_t* dev, eva8m_portconfig_t* portcfg)
 
     /* Receive the requested config */
     if (result == 0) {
-        (void)eva8m_receive_ubx_packet(dev);
-        if (eva8m_received_class_id(dev) == UBX_CFG_PRT) {
+        result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
+        if (result == 0 && eva8m_received_class_id(dev) == UBX_CFG_PRT) {
             // DEBUG("[EVA8M] received port_config\n");
             // DEBUG("[EVA8M] %02x %02x %02x %02x\n", dev->buffer[2], dev->buffer[3], dev->buffer[4], dev->buffer[5]);
             memcpy(portcfg, &dev->buffer[6], sizeof(*portcfg));
@@ -112,8 +113,8 @@ int eva8m_get_port_config(eva8m_t* dev, eva8m_portconfig_t* portcfg)
             // DEBUG("[EVA8M] outProtoMask %04X\n", portcfg->outProtoMask);
         }
         /* ACK / NACK */
-        (void)eva8m_receive_ubx_packet(dev);
-        if (eva8m_received_class_id(dev) == UBX_ACK_ACK) {
+        result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
+        if (result == 0 && eva8m_received_class_id(dev) == UBX_ACK_ACK) {
             // DEBUG("[EVA8M] received ACK\n");
         }
         else if (eva8m_received_class_id(dev) == UBX_ACK_NAK) {
@@ -317,7 +318,7 @@ static void _eva8m_reset_sm(eva8m_t* dev)
     dev->computed_ck_b = 0;
 }
 
-int eva8m_receive_ubx_packet(eva8m_t* dev /* , timeout */)
+int eva8m_receive_ubx_packet(eva8m_t* dev, uint16_t timeout)
 {
     DEBUG("[EVA8M] eva8m_receive_ubx_packet\n");
 
@@ -327,7 +328,10 @@ int eva8m_receive_ubx_packet(eva8m_t* dev /* , timeout */)
     _eva8m_reset_sm(dev);
 
     /* TODO implement timeout */
-    while (dev->state != EVA8M_RS_SAW_END) {
+    xtimer_ticks64_t start_time = xtimer_now64();
+    while (dev->state != EVA8M_RS_SAW_END &&
+           xtimer_less(xtimer_diff32_64(xtimer_now64(), start_time),
+                       xtimer_ticks_from_usec(timeout * US_PER_MS))) {
         uint16_t nr_avail;
         result = eva8m_available(dev, &nr_avail);
         if (result == 0) {
@@ -349,6 +353,10 @@ int eva8m_receive_ubx_packet(eva8m_t* dev /* , timeout */)
                 }
             }
         }
+    }
+    if (dev->state != EVA8M_RS_SAW_END) {
+        /* Timed out */
+        result = -ETIMEDOUT;
     }
     return result;
 }
