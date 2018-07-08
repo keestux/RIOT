@@ -209,7 +209,7 @@ int eva8m_available(eva8m_t* dev, uint16_t* avail);
  * reading bytes. An explanation can be found in section "DDC Port" of
  * the above mention document.
  *
- * It depends on the output mode (NMEA protocal or the UBX protocol) what
+ * It depends on the output mode (NMEA protocol or the UBX protocol) what
  * the data stream looks like.
  *
  * @param[in] dev           The device descriptor of EVA8M device
