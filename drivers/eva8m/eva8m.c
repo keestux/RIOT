@@ -29,18 +29,11 @@
 #define ENABLE_DEBUG        (1)
 #include "debug.h"
 
-static int _eva8m_exists(eva8m_t* dev);
-
 int eva8m_init(eva8m_t* dev, const eva8m_params_t* params)
 {
     int result = 0;
 
     dev->params = *params;
-
-    result = _eva8m_exists(dev);
-    if (result < 0) {
-        return result;
-    }
 
     uint16_t avail;
     for (int ix = 0; ix < 10; ix++) {
@@ -52,17 +45,6 @@ int eva8m_init(eva8m_t* dev, const eva8m_params_t* params)
     }
 
     return result;
-}
-
-static int _eva8m_exists(eva8m_t* dev)
-{
-    i2c_acquire(dev->params.i2c_dev);
-
-    // i2c_write_byte(dev->params.i2c_dev, dev->params.i2c_addr, (uint8_t)command, 0);
-
-    i2c_release(dev->params.i2c_dev);
-
-    return 0;
 }
 
 int eva8m_available(eva8m_t* dev, uint16_t* avail)
