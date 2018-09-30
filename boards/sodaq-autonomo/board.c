@@ -27,6 +27,15 @@ void board_init(void)
     /* initialize the on-board LED */
     gpio_init(LED0_PIN, GPIO_OUT);
 
+    BEE_VCC_OFF;
+    gpio_init(BEE_VCC_PIN, GPIO_OUT);
+
+    BEE_DTR_OFF;
+    gpio_init(BEE_DTR_PIN, GPIO_OUT);
+
+    VCC_SW_OFF;
+    gpio_init(VCC_SW_PIN, GPIO_OUT);
+
     /* initialize the CPU */
     cpu_init();
 }

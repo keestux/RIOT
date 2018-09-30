@@ -50,6 +50,48 @@ extern "C" {
 /** @} */
 
 /**
+ * @name    Bee Vcc On/Off
+ * @{
+ */
+#define BEE_VCC_PIN         GPIO_PIN(PA, 28)
+
+#define BEE_VCC_PORT        PORT->Group[PA]
+#define BEE_VCC_MASK        (1 << 28)
+
+#define BEE_VCC_ON          (BEE_VCC_PORT.OUTSET.reg = BEE_VCC_MASK)
+#define BEE_VCC_OFF         (BEE_VCC_PORT.OUTCLR.reg = BEE_VCC_MASK)
+#define BEE_VCC_TOGGLE      (BEE_VCC_PORT.OUTTGL.reg = BEE_VCC_MASK)
+/** @} */
+
+/**
+ * @name    Bee DTR
+ * @{
+ */
+#define BEE_DTR_PIN         GPIO_PIN(PB, 1)
+
+#define BEE_DTR_PORT        PORT->Group[PB]
+#define BEE_DTR_MASK        (1 << 1)
+
+#define BEE_DTR_ON          (BEE_DTR_PORT.OUTSET.reg = BEE_DTR_MASK)
+#define BEE_DTR_OFF         (BEE_DTR_PORT.OUTCLR.reg = BEE_DTR_MASK)
+#define BEE_DTR_TOGGLE      (BEE_DTR_PORT.OUTTGL.reg = BEE_DTR_MASK)
+/** @} */
+
+/**
+ * @name    Vcc On/Off
+ * @{
+ */
+#define VCC_SW_PIN          GPIO_PIN(PA, 8)
+
+#define VCC_SW_PORT         PORT->Group[PA]
+#define VCC_SW_MASK         (1 << 8)
+
+#define VCC_SW_ON           (VCC_SW_PORT.OUTSET.reg = VCC_SW_MASK)
+#define VCC_SW_OFF          (VCC_SW_PORT.OUTCLR.reg = VCC_SW_MASK)
+#define VCC_SW_TOGGLE       (VCC_SW_PORT.OUTTGL.reg = VCC_SW_MASK)
+/** @} */
+
+/**
  * @brief   Initialize board specific hardware, including clock, LEDs and std-IO
  */
 void board_init(void);
