@@ -35,7 +35,14 @@ typedef enum {
 /**
  * @brief   Chip details AT45DB series
  */
-typedef struct at45db_chip_details_s at45db_chip_details_t;
+typedef struct at45db_chip_details_s {
+    size_t page_addr_bits;      /**< Number of bits for a page address */
+    size_t nr_pages;            /**< Number of pages, must be (1 << page_addr_bits) */
+    size_t page_size;           /**< Size of a page */
+    size_t page_size_alt;       /**< Alternative size of a page */
+    size_t page_size_bits;      /**< Number of bits to address inside a page */
+    uint8_t density_code;       /**< The density code in byte 1 Device Details */
+} at45db_chip_details_t;
 
 /**
  * @brief   Device auto initialization parameters
@@ -67,46 +74,6 @@ typedef struct {
 int at45db_init(at45db_t *dev, at45db_params_t *params);
 
 /**
- * @brief Read data from buffer
- *
- * @param[in]  dev          The device descriptor of AT45DB device
- * @param[in]  bufno        The dataflash buffer number (can only be 1 or 2)
- * @param[in]  start        The start address in the dataflash buffer
- * @param[out] data         Pointer to the destination buffer
- * @param[in]  data_size    Size of the data
- *
- * @return                  0 on success
- * @return                  -1 invalid buffer number
- * @return                  -2 data could not be loaded
- */
-int at45db_read_buf(at45db_t *dev, size_t bufno, size_t start, uint8_t *data, size_t data_size);
-
-/**
- * @brief Read page into df buffer
- *
- * @param[in]  dev          The device descriptor of AT45DB device
- * @param[in]  pagenr       The dataflash page number
- * @param[in]  bufno        The dataflash buffer number (can only be 1 or 2)
- *
- * @return                  0 on success
- * @return                  -1 invalid buffer number
- * @return                  -2 invalid page number
- * @return                  -3 data not read
- */
-int at45db_page2buf(at45db_t *dev, size_t pagenr, size_t bufno);
-
-/**
- * @brief Erase a page
- *
- * @param[in]  dev          The device descriptor of AT45DB device
- * @param[in]  pagenr       The dataflash page number
- *
- * @return                  0 on success
- * @return                  -2 invalid page number
- */
-int at45db_erase_page(at45db_t *dev, size_t pagenr);
-
-/**
  * @brief Read the Security Register
  *
  * @param[in]  dev          The device descriptor of AT45DB device
@@ -116,25 +83,7 @@ int at45db_erase_page(at45db_t *dev, size_t pagenr);
  * @return                  0 on success
  * @return                  -1 error
  */
-int at45db_security_register(at45db_t *dev, uint8_t *data, size_t data_size);
-
-/**
- * @brief Get page size of the selected AT45DB
- *
- * @param[in]  dev          The device descriptor of AT45DB device
- *
- * @returns                 The page size, value 0 indicates unknown
- */
-size_t at45db_get_page_size(at45db_t *dev);
-
-/**
- * @brief Get number of pages of the selected AT45DB
- *
- * @param[in]  dev          The device descriptor of AT45DB device
- *
- * @returns                 The number of pages, value 0 indicates unknown
- */
-size_t at45db_get_nr_pages(at45db_t *dev);
+int at45db_security_register(const at45db_t *dev, uint8_t *data, size_t data_size);
 
 #ifdef __cplusplus
 }
