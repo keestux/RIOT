@@ -62,16 +62,25 @@ typedef struct {
 } at45db_t;
 
 /**
+ * @brief   AT45DB return code
+ */
+enum {
+    AT45DB_OK = 0,                  /**< success */
+    AT45DB_ERROR = -21,             /**< generic error */
+    AT45DB_UNKNOWN_VARIANT = -22,   /**< unknown chip variant */
+};
+
+/**
  * @brief Initialize the given AT45DB device
  *
  * @param[out] dev          Initialized device descriptor of AT45DB device
  * @param[in]  params       
  *
- * @return                  0 on success
- * @return                  ?? given SPI is not enabled in board config
- * @return                  ?? chip variant was not selected, or unknown
+ * @return                  AT45DB_OK on success
+ * @return                  SPI_NODEV on invalid device
+ * @return                  SPI_NOCS on invalid CS pin/line
  */
-int at45db_init(at45db_t *dev, at45db_params_t *params);
+int at45db_init(at45db_t *dev, const at45db_params_t *params);
 
 /**
  * @brief Read the Security Register
@@ -80,8 +89,8 @@ int at45db_init(at45db_t *dev, at45db_params_t *params);
  * @param[out] data         Pointer to the destination buffer
  * @param[in]  data_size    Size of the data
  *
- * @return                  0 on success
- * @return                  -1 error
+ * @return                  AT45DB_OK on success
+ * @return                  -AT45DB_ERROR error
  */
 int at45db_security_register(const at45db_t *dev, uint8_t *data, size_t data_size);
 
