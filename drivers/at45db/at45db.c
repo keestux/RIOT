@@ -88,7 +88,7 @@ int at45db_init(at45db_t *dev, const at45db_params_t *params)
     DEBUG("done initializing SPI master\n");
     check_id(dev);
     uint16_t status = get_full_status(dev);
-    DEBUG("AT45DB: status = %04X\n", status);    
+    DEBUG("AT45DB: status = 0x%04X\n", status);
 
     return AT45DB_OK;
 }
@@ -164,9 +164,26 @@ static void check_id(const at45db_t *dev)
 }
 
 /**
- * @brief Get the full status for AT45DB161E (Adesto)
+ * @brief   Get the full status (2 bytes) for AT45DB161E (Adesto)
  *
  * @param[in]  dev          The device descriptor of AT45DB device
+ *
+ * @details    byte bit(s)      Name / Description
+ *             1    -------------------------------
+ *                  7           RDY
+ *                  6           COMP
+ *                  5..2        DENSITY
+ *                  1           PROTECT
+ *                  0           PAGE SIZE (0: standard, 1: power of 2)
+ *             2    -------------------------------
+ *                  7           RDY
+ *                  6           reserved
+ *                  5           EPE
+ *                  4           reserved
+ *                  3           SLE
+ *                  2           PS2
+ *                  1           PS1
+ *                  0           ES
  */
 static uint16_t get_full_status(const at45db_t *dev)
 {
