@@ -119,7 +119,6 @@ int at45db_security_register(const at45db_t *dev, uint8_t *data, size_t data_siz
  * @brief   Read the Manufacturer and Device ID
  *
  * @param[in] dev           device descriptor
- *
  */
 static void check_id(const at45db_t *dev)
 {
@@ -134,19 +133,19 @@ static void check_id(const at45db_t *dev)
     /* The fourth byte is the length of the Extended Device Information. */
     ext_len = mfdid[3];
     if (ext_len > sizeof(extdinfo)) {
+        /* Maximize extended info to size of our buffer */
         ext_len = sizeof(extdinfo);
     }
     if (ext_len == 0) {
         ext_len = 1;
     }
     spi_transfer_bytes(dev->params.spi, dev->params.cs, false, NULL, extdinfo, ext_len);
-    DEBUG("AT45DB: Expecting 1F 2600\n");
-    DEBUG("AT45DB: Manuf ID: %02X\n", mfdid[0]);
-    DEBUG("AT45DB: Device ID: %02X%02X\n", mfdid[1], mfdid[2]);
-    DEBUG("AT45DB:   Fam Code: %02X\n", (mfdid[1] >> 5) & 0x07);
-    DEBUG("AT45DB:   Dens Code: %02X\n", mfdid[1] & 0x1F);
-    DEBUG("AT45DB:   Sub Code: %02X\n", (mfdid[2] >> 5) & 0x07);
-    DEBUG("AT45DB:   Prod Var: %02X\n", mfdid[2] & 0x1F);
+    DEBUG("AT45DB: Manuf ID:  0x%02X\n", mfdid[0]);
+    DEBUG("AT45DB: Device ID: 0x%02X%02X\n", mfdid[1], mfdid[2]);
+    DEBUG("AT45DB:   Fam Code:  0x%02X\n", (mfdid[1] >> 5) & 0x07);
+    DEBUG("AT45DB:   Dens Code: 0x%02X\n", mfdid[1] & 0x1F);
+    DEBUG("AT45DB:   Sub Code:  0x%02X\n", (mfdid[2] >> 5) & 0x07);
+    DEBUG("AT45DB:   Prod Var:  0x%02X\n", mfdid[2] & 0x1F);
 
     done(dev);
 
@@ -154,11 +153,12 @@ static void check_id(const at45db_t *dev)
 
     /* Manufacturer */
     if (mfdid[0] != MANUF_ADESTO) {
-        /* TODO */
+        DEBUG("ERROR: unknown manufacturer 0x%02X != 0x%02X", mfdid[0], MANUF_ADESTO);
     }
 
     /* Flash size */
     if ((mfdid[1] & 0x1F) != dev->details->density_code) {
+        DEBUG("ERROR: unknown flash size 0x%02X != 0x%02X", mfdid[1] & 0x1F, dev->details->density_code);
         /* TODO */
     }
 }

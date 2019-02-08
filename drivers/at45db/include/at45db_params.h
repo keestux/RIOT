@@ -31,14 +31,22 @@ extern "C" {
  * @{
  */
 #ifndef AT45DB_PARAM_SPI_DEV
-#define AT45DB_PARAM_SPI_DEV         (SPI_DEV(0))
+#define AT45DB_PARAM_SPI_DEV         SPI_DEV(0)
+#endif
+#ifndef AT45DB_PARAM_SPI_CS
+#define AT45DB_PARAM_SPI_CS          GPIO_PIN(0,23)
 #endif
 #ifndef AT45DB_PARAM_SPI_CLK
 #define AT45DB_PARAM_SPI_CLK         SPI_CLK_10MHZ
 #endif
+#ifndef AT45DB_PARAM_VARIANT
+#define AT45DB_PARAM_VARIANT         AT45DB161E
+#endif
 
 #define AT45DB_PARAMS_DEFAULT        {.spi = AT45DB_PARAM_SPI_DEV,  \
-                                      .clk = AT45DB_PARAM_SPI_CLK }
+                                      .cs = AT45DB_PARAM_SPI_CS, \
+                                      .clk = AT45DB_PARAM_SPI_CLK, \
+                                      .variant = AT45DB_PARAM_VARIANT }
 /**@}*/
 
 /**
