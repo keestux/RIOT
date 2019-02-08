@@ -51,7 +51,7 @@ typedef struct {
     spi_t spi;                  /**< SPI bus the dataflash is connected to */
     spi_cs_t cs;                /**< SPI chip select pin */
     spi_clk_t clk;              /**< SPI bus clock speed */
-    at45db_chip_details_t details;  /**< chip details */
+    at45db_variant_t variant;   /**< chip variant */
 } at45db_params_t;
 
 /**
@@ -59,6 +59,7 @@ typedef struct {
  */
 typedef struct {
     at45db_params_t params;     /**< parameters for initialization */
+    const at45db_chip_details_t *details;  /**< chip details */
 } at45db_t;
 
 /**

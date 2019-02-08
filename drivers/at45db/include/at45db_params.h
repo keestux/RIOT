@@ -31,7 +31,7 @@ extern "C" {
  * @{
  */
 #ifndef AT45DB_PARAM_SPI_DEV
-#define AT45DB_PARAM_SPI_DEV         (0)
+#define AT45DB_PARAM_SPI_DEV         (SPI_DEV(0))
 #endif
 #ifndef AT45DB_PARAM_SPI_CLK
 #define AT45DB_PARAM_SPI_CLK         SPI_CLK_10MHZ
