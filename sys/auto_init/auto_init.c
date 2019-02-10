@@ -562,6 +562,11 @@ void auto_init(void)
 #ifdef MODULE_AUTO_INIT_STORAGE
     DEBUG("auto_init STORAGE\n");
 
+#ifdef MODULE_AT45DB
+    extern void auto_init_at45db(void);
+    auto_init_at45db();
+#endif
+
 #ifdef MODULE_SDCARD_SPI
     extern void auto_init_sdcard_spi(void);
     auto_init_sdcard_spi();

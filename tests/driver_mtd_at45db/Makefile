@@ -1,8 +1,9 @@
-APPLICATION = driver_at45db
+APPLICATION = driver_mtd_at45db
 include ../Makefile.tests_common
 
 USEMODULE += at45db
 USEMODULE += auto_init_storage
+USEMODULE += mtd_at45db
 USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += xtimer

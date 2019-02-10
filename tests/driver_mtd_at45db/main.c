@@ -11,7 +11,7 @@
  * @{
  *
  * @file
- * @brief       Test application for the AT45DB driver
+ * @brief       Test application for the MTD_AT45DB driver
  *
  * @author      Kees Bakker <kees@sodaq.com>
  *
@@ -25,6 +25,7 @@
 
 #include "at45db.h"
 #include "at45db_params.h"
+#include "mtd_at45db.h"
 #include "board.h"
 #include "periph/spi.h"
 #include "shell.h"
@@ -32,6 +33,21 @@
 
 static at45db_t dev;
 
+ /* this is provided by the at45db driver
+ * see sys/auto_init/storage/auto_init_at45db.c
+ */
+extern at45db_t at45db_devs[];
+mtd_at45db_t my_mtd_dev = {
+    .base = {
+        .driver = &mtd_at45db_driver,
+    },
+    .at45db_dev = &at45db_devs[0],
+    .params = &at45db_params[0]
+};
+
+mtd_dev_t *mtd0 = (mtd_dev_t *)&my_mtd_dev;
+
+static int cmd_init(int argc, char **argv);
 static int cmd_read_all_pages(int argc, char **argv);
 static int cmd_read_page(int argc, char **argv);
 static int cmd_erase_page(int argc, char **argv);
@@ -39,6 +55,7 @@ static int cmd_security_register(int argc, char **argv);
 static int cmd_disable_dump(int argc, char **argv);
 static int cmd_enable_dump(int argc, char **argv);
 static const shell_command_t shell_commands[] = {
+    { "init", "Init", cmd_init },
     { "rall", "Read all pages", cmd_read_all_pages },
     { "rp", "Read a page", cmd_read_page },
     { "ep", "Erase a page", cmd_erase_page },
@@ -53,21 +70,21 @@ static void dump_buffer(const char *txt, uint8_t *buffer, size_t size);
 
 int main(void)
 {
-    puts("AT45DB test application starting...");
-
-    puts("Initializing AT45DB device descriptor... ");
-    if (at45db_init(&dev, &at45db_params[0]) == 0) {
-        puts("[OK]");
-    }
-    else {
-        puts("[Failed]\n");
-        return 1;
-    }
-    printf("SPI clock = %ld\n", (long)dev.params.clk);
+    puts("MTD AT45DB test application starting...");
 
     /* run the shell */
     char line_buf[SHELL_DEFAULT_BUFSIZE];
     shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
+
+    return 0;
+}
+
+static int cmd_init(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    int res = mtd_init(mtd0);
+    printf("init: res = %d\n", res);
 
     return 0;
 }

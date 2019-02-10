@@ -6,6 +6,17 @@
  * directory for more details.
  */
 
+/**
+ * @ingroup     drivers_at45db
+ * @{
+ *
+ * @file
+ * @brief       Driver for serial flash memory attached to SPI
+ *
+ * @author      Kees Bakker <kees@sodaq.com>
+ * @}
+ */
+
 #include "at45db.h"
 
 #define ENABLE_DEBUG        (1)
@@ -62,10 +73,23 @@ static inline void done(const at45db_t *dev)
     spi_release(dev->params.spi);
 }
 
+static inline bool is_valid_bufnr(size_t bufnr)
+{
+    return bufnr == 1 || bufnr == 2;
+}
+
+static inline bool is_valid_page(size_t pagenr, const at45db_chip_details_t *details)
+{
+    return pagenr < details->nr_pages;
+}
+
 static const at45db_chip_details_t *at45db_variant_details(at45db_variant_t variant);
 static void check_id(const at45db_t *dev);
 static uint16_t get_full_status(const at45db_t *dev);
 static inline void wait_till_ready(const at45db_t *dev);
+static uint8_t get_page_addr_byte0(uint16_t pagenr, size_t shift);
+static uint8_t get_page_addr_byte1(uint16_t pagenr, size_t shift);
+static uint8_t get_page_addr_byte2(uint16_t pagenr, size_t shift);
 
 int at45db_init(at45db_t *dev, const at45db_params_t *params)
 {
@@ -89,6 +113,73 @@ int at45db_init(at45db_t *dev, const at45db_params_t *params)
     check_id(dev);
     uint16_t status = get_full_status(dev);
     DEBUG("AT45DB: status = 0x%04X\n", status);
+
+    dev->init_done = true;
+
+    return AT45DB_OK;
+}
+
+int at45db_read_page(const at45db_t *dev, uint32_t pagenr, uint8_t *data, size_t len)
+{
+    int res;
+
+    /* Read the page into the dataflash buffer */
+    res = at45db_page2buf(dev, pagenr, 1);
+    if (res != AT45DB_OK) {
+        return res;
+    }
+
+    /* Transfer from the dataflash buffer to the destiny */
+    res = at45db_read_buf(dev, 1, 0, data, len);
+
+    return AT45DB_OK;
+}
+
+int at45db_read_buf(const at45db_t *dev, size_t bufnr, size_t start, uint8_t *data, size_t len)
+{
+    uint8_t cmd;
+    if (!is_valid_bufnr(bufnr)) {
+        return -1;
+    }
+    if (data == NULL || len == 0) {
+        /* Not sure if this makes sense, but it validates the function arguments */
+        return 0;
+    }
+
+    cmd = bufnr == 1 ? CMD_BUF1_READ : CMD_BUF2_READ;
+
+    lock(dev);
+    wait_till_ready(dev);
+    spi_transfer_byte(dev->params.spi, dev->params.cs, true, cmd);
+    spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0x00);           /* don't care */
+    spi_transfer_byte(dev->params.spi, dev->params.cs, true, start >> 8);     /* addr, ms byte */
+    spi_transfer_byte(dev->params.spi, dev->params.cs, true, start);          /* addr, ls byte */
+    spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0x00);           /* don't care */
+    spi_transfer_bytes(dev->params.spi, dev->params.cs, false, NULL, data, len);
+    done(dev);
+
+    return 0;
+}
+
+int at45db_page2buf(const at45db_t *dev, size_t pagenr, size_t bufnr)
+{
+    // DEBUG("AT45DB: page#%d to buf%d\n", pagenr, bufnr);
+    uint8_t cmd[4];
+    if (!is_valid_bufnr(bufnr)) {
+        return AT45DB_INVALID_BUFNR;
+    }
+    if (!is_valid_page(pagenr, dev->details)) {
+        return AT45DB_INVALID_PAGENR;
+    }
+    cmd[0] = bufnr == 1 ? CMD_FLASH_TO_BUF1 : CMD_FLASH_TO_BUF2;
+    cmd[1] = get_page_addr_byte0(pagenr, dev->details->page_size_bits);
+    cmd[2] = get_page_addr_byte1(pagenr, dev->details->page_size_bits);
+    cmd[3] = get_page_addr_byte2(pagenr, dev->details->page_size_bits);
+    // DEBUG("AT45DB: cmd=%02X%02X%02X%02X\n", cmd[0], cmd[1], cmd[2], cmd[3]);
+
+    lock(dev);
+    spi_transfer_bytes(dev->params.spi, dev->params.cs, false, cmd, NULL, sizeof(cmd));
+    done(dev);
 
     return AT45DB_OK;
 }
@@ -219,4 +310,52 @@ static inline void wait_till_ready(const at45db_t *dev)
         status = spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0);
     } while ((status & 0x80) == 0);
     spi_transfer_byte(dev->params.spi, dev->params.cs, false, 0);
+}
+
+/*
+ * From the AT45DB081D documentation (other variants are not really identical)
+ *   "For the DataFlash standard page size (264-bytes), the opcode must be
+ *    followed by three address bytes consist of three don’t care bits,
+ *    12 page address bits (PA11 - PA0) that specify the page in the main
+ *    memory to be written and nine don’t care bits."
+ *
+ *  32109876 54321098 76543210
+ *  ---aaaaa aaaaaaa- --------
+ */
+/*
+ * From the AT45DB161D documentation (AT45DB161E is identical)
+ *   "For the standard DataFlash page size (528 bytes), the opcode must be
+ *    followed by three address bytes consist of 2 don’t care bits, 12 page
+ *    address bits (PA11 - PA0) that specify the page in the main memory to
+ *    be written and 10 don’t care bits."
+ *
+ *  32109876 54321098 76543210
+ *  --aaaaaa aaaaaa-- --------
+ */
+/*
+ * From the AT45DB041D documentation
+ *   "For the DataFlash standard page size (264-bytes), the opcode must be
+ *   followed by three address bytes consist of four don’t care bits, 11 page
+ *   address bits (PA10 - PA0) that specify the page in the main memory to
+ *   be written and nine don’t care bits."
+ *
+ *  32109876 54321098 76543210
+ *  ----aaaa aaaaaaa- --------
+ */
+static uint8_t get_page_addr_byte0(uint16_t pagenr, size_t shift)
+{
+    // More correct would be to use a 24 bits number
+    // shift to the left by number of bits. But the uint16_t can be considered
+    // as if it was already shifted by 8.
+    return (pagenr << (shift - 8)) >> 8;
+}
+static uint8_t get_page_addr_byte1(uint16_t pagenr, size_t shift)
+{
+    return pagenr << (shift - 8);
+}
+static uint8_t get_page_addr_byte2(uint16_t pagenr, size_t shift)
+{
+    (void)pagenr;
+    (void)shift;
+    return 0;
 }

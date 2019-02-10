@@ -8,7 +8,7 @@
 
 /**
  * @defgroup    drivers_at45db AT45DB
- * @ingroup     drivers_dataflash
+ * @ingroup     drivers_storage
  * @brief       Device driver interface for the AT45DB dataflash
  * @{
  *
@@ -20,6 +20,9 @@
 
 #ifndef AT45DB_H_
 #define AT45DB_H_
+
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "periph/spi.h"
 
@@ -64,6 +67,7 @@ typedef struct {
 typedef struct {
     at45db_params_t params;     /**< parameters for initialization */
     const at45db_chip_details_t *details;  /**< chip details */
+    bool init_done;             /**< flag to indicate that the init function was done */
 } at45db_t;
 
 /**
@@ -73,10 +77,12 @@ enum {
     AT45DB_OK = 0,                  /**< success */
     AT45DB_ERROR = -21,             /**< generic error */
     AT45DB_UNKNOWN_VARIANT = -22,   /**< unknown chip variant */
+    AT45DB_INVALID_BUFNR = -23,     /**< invalid buffer number */
+    AT45DB_INVALID_PAGENR = -24,    /**< invalid page number */
 };
 
 /**
- * @brief Initialize the given AT45DB device
+ * @brief   Initialize the given AT45DB device
  *
  * @param[out] dev          Initialized device descriptor of AT45DB device
  * @param[in]  params       Configuration parameters (SPI dev, CS pin, etc)
@@ -88,7 +94,35 @@ enum {
 int at45db_init(at45db_t *dev, const at45db_params_t *params);
 
 /**
- * @brief Read the Security Register
+ * @brief   Read a page from the device
+ *
+ * @param[in]  dev          The device descriptor of AT45DB device
+ * @param[in]  pagenr       The page number
+ * @param[out] data         Pointer to the destination buffer
+ * @param[in]  len          The number of bytes to read
+ *
+ * @return                  AT45DB_OK on success
+ * @return                  AT45DB_ERROR error
+ */
+int at45db_read_page(const at45db_t *dev, uint32_t pagenr, uint8_t *data, size_t len);
+
+/**
+ * @brief   Read a page from the device
+ *
+ * @param[in]  dev          The device descriptor of AT45DB device
+ * @param[in]  pagenr       The page number
+ * @param[in]  bufnr        The at45db buffer number
+ *
+ * @return                  AT45DB_OK on success
+ * @return                  AT45DB_INVALID_BUFNR not a valid buffer number
+ * @return                  AT45DB_INVALID_PAGENR not a valid page number
+ */
+int at45db_page2buf(const at45db_t *dev, size_t pagenr, size_t bufnr);
+
+int at45db_read_buf(const at45db_t *dev, size_t bufnr, size_t start, uint8_t *data, size_t len);
+
+/**
+ * @brief   Read the Security Register
  *
  * @param[in]  dev          The device descriptor of AT45DB device
  * @param[out] data         Pointer to the destination buffer

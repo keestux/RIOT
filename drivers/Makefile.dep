@@ -351,6 +351,7 @@ ifneq (,$(filter mtd_%,$(USEMODULE)))
 
   ifneq (,$(filter mtd_at45db,$(USEMODULE)))
     USEMODULE += at45db
+    FEATURES_REQUIRED += periph_spi
   endif
 
   ifneq (,$(filter mtd_sdcard,$(USEMODULE)))
