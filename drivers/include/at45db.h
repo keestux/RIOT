@@ -27,6 +27,10 @@
 extern "C" {
 #endif
 
+/**
+ * @brief   Chip variants
+ * @details The AT45DB manufactured by Adesto (originally by Atmel)
+ */
 typedef enum {
     AT45DB161E,                 /**< 16Mbit, 4096 pages of 526 bytes */
     AT45DB641E,                 /**< 64Mbit, 32768 pages of 268 bytes */
@@ -75,7 +79,7 @@ enum {
  * @brief Initialize the given AT45DB device
  *
  * @param[out] dev          Initialized device descriptor of AT45DB device
- * @param[in]  params       
+ * @param[in]  params       Configuration parameters (SPI dev, CS pin, etc)
  *
  * @return                  AT45DB_OK on success
  * @return                  SPI_NODEV on invalid device
@@ -91,7 +95,7 @@ int at45db_init(at45db_t *dev, const at45db_params_t *params);
  * @param[in]  data_size    Size of the data
  *
  * @return                  AT45DB_OK on success
- * @return                  -AT45DB_ERROR error
+ * @return                  AT45DB_ERROR error
  */
 int at45db_security_register(const at45db_t *dev, uint8_t *data, size_t data_size);
 

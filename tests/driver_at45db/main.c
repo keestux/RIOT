@@ -25,18 +25,34 @@
 
 #include "at45db.h"
 #include "at45db_params.h"
+#include "mtd_at45db.h"
+#include "mtd_sdcard.h"
 #include "board.h"
 #include "periph/spi.h"
 #include "shell.h"
 #include "xtimer.h"
 
-#ifdef TEST_AT45DB_SPI_SPEED
-#define SPI_SPEED   (TEST_AT45DB_SPI_SPEED)
-#else
-#define SPI_SPEED   (SPI_SPEED_10MHZ)
-#endif
-
 static at45db_t dev;
+
+#if defined(MODULE_MTD_AT45DB) || defined(DOXYGEN)
+ /* this is provided by the at45db driver
+ * see sys/auto_init/storage/auto_init_at45db.c
+ */
+extern at45db_t at45db_devs[sizeof(at45db_params) /
+                            sizeof(at45db_params[0])];
+mtd_at45db_t my_mtd_dev = {
+    .base = {
+        .driver = &mtd_at45db_driver,
+        .page_size = 256,       /* TODO. This depends on AT45DB variant */
+        .pages_per_sector = 1,  /* TODO What is this? */
+        .sector_count = 4096,   /* TODO Not sure. Nr pages of AT45DB161E: 4096 */
+    },
+    .at45db_dev = &at45db_devs[0],
+    .params = &at45db_params[0]
+};
+
+mtd_dev_t *mtd0 = (mtd_dev_t *)&my_mtd_dev;
+#endif /* MODULE_MTD_AT45DB || DOXYGEN */
 
 static int cmd_read_all_pages(int argc, char **argv);
 static int cmd_read_page(int argc, char **argv);
@@ -147,7 +163,7 @@ static int cmd_enable_dump(int argc, char **argv)
 
 static void dump_buffer(const char *txt, uint8_t *buffer, size_t size)
 {
-    printf("%s ", txt);
+    printf("%s:\n", txt);
     size_t ix;
     for (ix = 0; ix < size; ix++) {
         printf("%02X", buffer[ix]);

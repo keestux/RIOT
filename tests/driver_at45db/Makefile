@@ -2,6 +2,7 @@ APPLICATION = driver_at45db
 include ../Makefile.tests_common
 
 USEMODULE += at45db
+USEMODULE += mtd_at45db
 USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += xtimer
