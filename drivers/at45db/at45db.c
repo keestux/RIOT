@@ -63,40 +63,40 @@ static const at45db_chip_details_t at45db641e = {
 };
 
 
-static inline void lock(const at45db_t *dev)
+static inline void _lock(const at45db_t *dev)
 {
     spi_acquire(dev->params.spi, dev->params.cs, SPI_MODE, dev->params.clk);
 }
 
-static inline void done(const at45db_t *dev)
+static inline void _done(const at45db_t *dev)
 {
     spi_release(dev->params.spi);
 }
 
-static inline bool is_valid_bufnr(size_t bufnr)
+static inline bool _is_valid_bufnr(size_t bufnr)
 {
     return bufnr == 1 || bufnr == 2;
 }
 
-static inline bool is_valid_page(size_t pagenr, const at45db_chip_details_t *details)
+static inline bool _is_valid_page(size_t pagenr, const at45db_chip_details_t *details)
 {
     return pagenr < details->nr_pages;
 }
 
-static const at45db_chip_details_t *at45db_variant_details(at45db_variant_t variant);
-static void check_id(const at45db_t *dev);
-static uint16_t get_full_status(const at45db_t *dev);
-static inline void wait_till_ready(const at45db_t *dev);
-static uint8_t get_page_addr_byte0(uint16_t pagenr, size_t shift);
-static uint8_t get_page_addr_byte1(uint16_t pagenr, size_t shift);
-static uint8_t get_page_addr_byte2(uint16_t pagenr, size_t shift);
+static const at45db_chip_details_t *_get_variant_details(at45db_variant_t variant);
+static void _check_id(const at45db_t *dev);
+static uint16_t _get_full_status(const at45db_t *dev);
+static inline void _wait_till_ready(const at45db_t *dev);
+static inline uint8_t _get_page_addr_byte0(uint16_t pagenr, size_t shift);
+static inline uint8_t _get_page_addr_byte1(uint16_t pagenr, size_t shift);
+static inline uint8_t _get_page_addr_byte2(uint16_t pagenr, size_t shift);
 
 int at45db_init(at45db_t *dev, const at45db_params_t *params)
 {
     int retval;
 
     const at45db_chip_details_t *details;
-    details = at45db_variant_details(params->variant);
+    details = _get_variant_details(params->variant);
     if (details == NULL) {
         return AT45DB_UNKNOWN_VARIANT;
     }
@@ -110,8 +110,8 @@ int at45db_init(at45db_t *dev, const at45db_params_t *params)
         return retval;
     }
     DEBUG("done initializing SPI master\n");
-    check_id(dev);
-    uint16_t status = get_full_status(dev);
+    _check_id(dev);
+    uint16_t status = _get_full_status(dev);
     DEBUG("AT45DB: status = 0x%04X\n", status);
 
     dev->init_done = true;
@@ -122,15 +122,17 @@ int at45db_init(at45db_t *dev, const at45db_params_t *params)
 int at45db_read_page(const at45db_t *dev, uint32_t pagenr, uint8_t *data, size_t len)
 {
     int res;
+    const size_t bufnr = 1;
 
     /* Read the page into the dataflash buffer */
-    res = at45db_page2buf(dev, pagenr, 1);
+    res = at45db_page2buf(dev, pagenr, bufnr);
     if (res != AT45DB_OK) {
         return res;
     }
 
     /* Transfer from the dataflash buffer to the destiny */
-    res = at45db_read_buf(dev, 1, 0, data, len);
+    /* For now, read from start of buffer */
+    res = at45db_read_buf(dev, bufnr, 0, data, len);
 
     return AT45DB_OK;
 }
@@ -138,7 +140,7 @@ int at45db_read_page(const at45db_t *dev, uint32_t pagenr, uint8_t *data, size_t
 int at45db_read_buf(const at45db_t *dev, size_t bufnr, size_t start, uint8_t *data, size_t len)
 {
     uint8_t cmd;
-    if (!is_valid_bufnr(bufnr)) {
+    if (!_is_valid_bufnr(bufnr)) {
         return -1;
     }
     if (data == NULL || len == 0) {
@@ -148,15 +150,15 @@ int at45db_read_buf(const at45db_t *dev, size_t bufnr, size_t start, uint8_t *da
 
     cmd = bufnr == 1 ? CMD_BUF1_READ : CMD_BUF2_READ;
 
-    lock(dev);
-    wait_till_ready(dev);
+    _lock(dev);
+    _wait_till_ready(dev);
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, cmd);
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0x00);           /* don't care */
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, start >> 8);     /* addr, ms byte */
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, start);          /* addr, ls byte */
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0x00);           /* don't care */
     spi_transfer_bytes(dev->params.spi, dev->params.cs, false, NULL, data, len);
-    done(dev);
+    _done(dev);
 
     return 0;
 }
@@ -165,21 +167,21 @@ int at45db_page2buf(const at45db_t *dev, size_t pagenr, size_t bufnr)
 {
     // DEBUG("AT45DB: page#%d to buf%d\n", pagenr, bufnr);
     uint8_t cmd[4];
-    if (!is_valid_bufnr(bufnr)) {
+    if (!_is_valid_bufnr(bufnr)) {
         return AT45DB_INVALID_BUFNR;
     }
-    if (!is_valid_page(pagenr, dev->details)) {
+    if (!_is_valid_page(pagenr, dev->details)) {
         return AT45DB_INVALID_PAGENR;
     }
     cmd[0] = bufnr == 1 ? CMD_FLASH_TO_BUF1 : CMD_FLASH_TO_BUF2;
-    cmd[1] = get_page_addr_byte0(pagenr, dev->details->page_size_bits);
-    cmd[2] = get_page_addr_byte1(pagenr, dev->details->page_size_bits);
-    cmd[3] = get_page_addr_byte2(pagenr, dev->details->page_size_bits);
+    cmd[1] = _get_page_addr_byte0(pagenr, dev->details->page_size_bits);
+    cmd[2] = _get_page_addr_byte1(pagenr, dev->details->page_size_bits);
+    cmd[3] = _get_page_addr_byte2(pagenr, dev->details->page_size_bits);
     // DEBUG("AT45DB: cmd=%02X%02X%02X%02X\n", cmd[0], cmd[1], cmd[2], cmd[3]);
 
-    lock(dev);
+    _lock(dev);
     spi_transfer_bytes(dev->params.spi, dev->params.cs, false, cmd, NULL, sizeof(cmd));
-    done(dev);
+    _done(dev);
 
     return AT45DB_OK;
 }
@@ -194,14 +196,14 @@ int at45db_security_register(const at45db_t *dev, uint8_t *data, size_t data_siz
     }
 
     cmd = CMD_READ_SECURITY_REGISTER;
-    lock(dev);
-    wait_till_ready(dev);
+    _lock(dev);
+    _wait_till_ready(dev);
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, cmd);
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0x00);           /* don't care */
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0x00);           /* don't care */
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0x00);           /* don't care */
     spi_transfer_bytes(dev->params.spi, dev->params.cs, false, NULL, data, data_size);
-    done(dev);
+    _done(dev);
 
     return 0;
 }
@@ -211,13 +213,13 @@ int at45db_security_register(const at45db_t *dev, uint8_t *data, size_t data_siz
  *
  * @param[in] dev           device descriptor
  */
-static void check_id(const at45db_t *dev)
+static void _check_id(const at45db_t *dev)
 {
     uint8_t mfdid[4];
     uint8_t extdinfo[4];
     size_t ext_len;
 
-    lock(dev);
+    _lock(dev);
 
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, CMD_READ_MFGID);
     spi_transfer_bytes(dev->params.spi, dev->params.cs, true, NULL, mfdid, sizeof(mfdid));
@@ -238,7 +240,7 @@ static void check_id(const at45db_t *dev)
     DEBUG("AT45DB:   Sub Code:  0x%02X\n", (mfdid[2] >> 5) & 0x07);
     DEBUG("AT45DB:   Prod Var:  0x%02X\n", mfdid[2] & 0x1F);
 
-    done(dev);
+    _done(dev);
 
     /* Sanity Checks */
 
@@ -276,17 +278,17 @@ static void check_id(const at45db_t *dev)
  *                  1           PS1
  *                  0           ES
  */
-static uint16_t get_full_status(const at45db_t *dev)
+static uint16_t _get_full_status(const at45db_t *dev)
 {
     uint16_t status;
-    lock(dev);
+    _lock(dev);
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, CMD_READ_STATUS);
     spi_transfer_bytes(dev->params.spi, dev->params.cs, false, NULL, &status, sizeof(status));
-    done(dev);
+    _done(dev);
     return status;
 }
 
-static const at45db_chip_details_t *at45db_variant_details(at45db_variant_t variant)
+static const at45db_chip_details_t *_get_variant_details(at45db_variant_t variant)
 {
     const at45db_chip_details_t * retval = NULL;
     switch (variant) {
@@ -302,12 +304,15 @@ static const at45db_chip_details_t *at45db_variant_details(at45db_variant_t vari
     return retval;
 }
 
-static inline void wait_till_ready(const at45db_t *dev)
+static inline void _wait_till_ready(const at45db_t *dev)
 {
     uint8_t status;
     spi_transfer_byte(dev->params.spi, dev->params.cs, true, CMD_READ_STATUS);
     do {
         status = spi_transfer_byte(dev->params.spi, dev->params.cs, true, 0);
+        /* TODO
+         * Should/could we sleep or yield?
+         */
     } while ((status & 0x80) == 0);
     spi_transfer_byte(dev->params.spi, dev->params.cs, false, 0);
 }
@@ -342,18 +347,18 @@ static inline void wait_till_ready(const at45db_t *dev)
  *  32109876 54321098 76543210
  *  ----aaaa aaaaaaa- --------
  */
-static uint8_t get_page_addr_byte0(uint16_t pagenr, size_t shift)
+static inline uint8_t _get_page_addr_byte0(uint16_t pagenr, size_t shift)
 {
     // More correct would be to use a 24 bits number
     // shift to the left by number of bits. But the uint16_t can be considered
     // as if it was already shifted by 8.
     return (pagenr << (shift - 8)) >> 8;
 }
-static uint8_t get_page_addr_byte1(uint16_t pagenr, size_t shift)
+static inline uint8_t _get_page_addr_byte1(uint16_t pagenr, size_t shift)
 {
     return pagenr << (shift - 8);
 }
-static uint8_t get_page_addr_byte2(uint16_t pagenr, size_t shift)
+static inline uint8_t _get_page_addr_byte2(uint16_t pagenr, size_t shift)
 {
     (void)pagenr;
     (void)shift;
