@@ -7,7 +7,7 @@
  */
 
 /**
- * @ingroup     drivers_bmx280
+ * @ingroup     drivers_eva8m
  * @{
  *
  * @file
