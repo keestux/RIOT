@@ -25,6 +25,7 @@
 #include "eva8m_params.h"
 #include "eva8m.h"
 #include "msg.h"
+#include "periph/gpio.h"
 #include "thread.h"
 #include "ringbuffer.h"
 #include "xtimer.h"
@@ -64,6 +65,16 @@ static void dump_ubx(eva8m_t* dev)
         printf("    fixType=%02X\n", pckt.fixType);
         printf("    numSV=%u\n", (unsigned int)pckt.numSV);
     }
+    else if (msg_class_id == UBX_MON_VER) {
+        int offset = 6;
+        printf("MON_VER:\n");
+        printf("    swVersion: '%s'\n", (char *)&dev->buffer[offset + 0]);
+        printf("    hwVersion: '%s'\n", (char *)&dev->buffer[offset + 30]);
+        printf("    extension0: '%s'\n", (char *)&dev->buffer[offset + 40]);
+        printf("    extension1: '%s'\n", (char *)&dev->buffer[offset + 70]);
+        printf("    extension2: '%s'\n", (char *)&dev->buffer[offset + 100]);
+        printf("    extension3: '%s'\n", (char *)&dev->buffer[offset + 130]);
+    }
     else {
         printf("%02X", *ptr++);
         printf(" %02X", *ptr++);
@@ -82,14 +93,28 @@ static void dump_ubx(eva8m_t* dev)
     }
 }
 
+static void dump_timepulse_parm(eva8m_timepulseparm_t *parm)
+{
+    printf("CFG_TP5:\n");
+    printf("    tpIdx=%u\n", (unsigned)parm->tpIdx);
+    printf("    version=%u\n", (unsigned)parm->version);
+    printf("    antCableDelay=%u\n", (unsigned)parm->antCableDelay);
+    printf("    rfGroupDelay=%u\n", (unsigned)parm->rfGroupDelay);
+    printf("    freqPeriod=%lu\n", (unsigned long)parm->freqPeriod);
+    printf("    freqPeriodLock=%lu\n", (unsigned long)parm->freqPeriodLock);
+    printf("    flags=0x%08lx\n", (unsigned long)parm->flags);
+}
+
 static void *poller(void *arg)
 {
     eva8m_t* dev = (eva8m_t*)arg;
     eva8m_portconfig_t portcfg;
+    eva8m_timepulseparm_t timepulse_parm;
 
     printf("poller\n");
     if (dev) {
         int result;
+
         /* Start by switching off outNmea */
         result = eva8m_get_port_config(dev, &portcfg);
         if (result == 0) {
@@ -97,18 +122,34 @@ static void *poller(void *arg)
             //portcfg.outProtoMask &= ~(2);
         }
         result = eva8m_send_ubx_packet(dev, UBX_CFG_PRT, (uint8_t*)&portcfg, sizeof(portcfg));
+        /* ACK / NACK */
+        result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
+        if (result == 0 && eva8m_received_class_id(dev) == UBX_ACK_ACK) {
+            // printf("[EVA8M] received ACK\n");
+        }
+        else if (eva8m_received_class_id(dev) == UBX_ACK_NAK) {
+            printf("[EVA8M] received NACK\n");
+        }
 
+        result = eva8m_get_timepulse_parm(dev, &timepulse_parm);
+        if (result == 0) {
+            dump_timepulse_parm(&timepulse_parm);
+        }
+#if 1
         /* NAV-PVT every 1 seconds */
         printf("UBX_NAV_PVT\n");
-        result = eva8m_send_cfg_msg(dev, UBX_NAV_PVT, 1);
+        result = eva8m_send_cfg_msg(dev, UBX_NAV_PVT, 10);
         result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
         dump_ubx(dev);
 
         /* NAV-SAT Every 10 seconds */
         printf("UBX_NAV_SAT\n");
-        result = eva8m_send_cfg_msg(dev, UBX_NAV_SAT, 10);
+        result = eva8m_send_cfg_msg(dev, UBX_NAV_SAT, 100);
         result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
         dump_ubx(dev);
+#endif
+
+        (void)eva8m_send_ubx_packet(dev, UBX_MON_VER, NULL, 0);
 
         while (1) {
             result = eva8m_receive_ubx_packet(dev, 1100);
@@ -130,6 +171,18 @@ static void *poller(void *arg)
     return NULL;
 }
 
+static void timepulse_cb(void *arg)
+{
+    (void)arg;
+    printf(">> GPS Timepulse\n");
+}
+
+static void button0_cb(void *arg)
+{
+    (void)arg;
+    printf(">> BTN0\n");
+}
+
 int main(void)
 {
     eva8m_t dev;
@@ -143,6 +196,16 @@ int main(void)
     result = eva8m_init(&dev, &eva8m_params[0]);
     if (result < 0) {
         puts("[Error] Did not detect an EVA 8/8M");
+        return 1;
+    }
+
+    if (gpio_init_int(GPS_TIMEPULSE_PIN, GPS_TIMEPULSE_MODE, GPIO_RISING, timepulse_cb, (void *)1) < 0) {
+        puts("[FAILED] init GPS_TIMEPULSE!");
+        return 1;
+    }
+
+    if (gpio_init_int(BTN0_PIN, BTN0_MODE, GPIO_FALLING, button0_cb, (void *)1) < 0) {
+        puts("[FAILED] init BTN0!");
         return 1;
     }
 
