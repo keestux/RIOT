@@ -73,6 +73,42 @@ int eva8m_read_byte(eva8m_t* dev, uint8_t* b)
     return result;
 }
 
+static int _eva8m_get_data(eva8m_t* dev,
+                           eva8m_class_id_t msg_class_id,
+                           uint8_t *buffer, size_t buflen)
+{
+    int result;
+
+    memset(buffer, 0, buflen);
+
+    /* Send the command to get the data */
+    result = eva8m_send_ubx_packet(dev, msg_class_id, NULL, 0);
+    DEBUG("[EVA8M] send packet (sg_class_id=0x%04X, result=%d)\n",
+          (unsigned)msg_class_id, result);
+    /* Receive the requested data */
+    if (result == 0) {
+        result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
+        DEBUG("[EVA8M] receive packet (sg_class_id=0x%04X, result=%d)\n",
+              (unsigned)eva8m_received_class_id(dev), result);
+        if (result == 0 && eva8m_received_class_id(dev) == msg_class_id) {
+            DEBUG("[EVA8M] received packet\n");
+            memcpy(buffer, &dev->buffer[6], buflen);
+        } else {
+            /* Else what? Ignore? */
+        }
+        /* ACK / NACK */
+        result = eva8m_receive_ubx_packet(dev, EVA8M_DEFAULT_TIMEOUT);
+        if (result == 0 && eva8m_received_class_id(dev) == UBX_ACK_ACK) {
+            // DEBUG("[EVA8M] received ACK\n");
+        }
+        else if (eva8m_received_class_id(dev) == UBX_ACK_NAK) {
+            DEBUG("[EVA8M] received NACK\n");
+        }
+    }
+
+    return result;
+}
+
 int eva8m_get_port_config(eva8m_t* dev, eva8m_portconfig_t* portcfg)
 {
     int result;
@@ -107,6 +143,13 @@ int eva8m_get_port_config(eva8m_t* dev, eva8m_portconfig_t* portcfg)
     return result;
 }
 
+int eva8m_get_timepulse_parm(eva8m_t* dev, eva8m_timepulseparm_t *parm)
+{
+    DEBUG("[EVA8M] eva8m_get_timepulse_parm\n");
+
+    return _eva8m_get_data(dev, UBX_CFG_TP5, (uint8_t*)parm, sizeof(*parm));
+}
+
 static inline void _update_checksum(uint8_t* ck_a, uint8_t* ck_b, uint8_t b) __attribute__((always_inline));
 static inline void _update_checksum(uint8_t* ck_a, uint8_t* ck_b, uint8_t b)
 {
@@ -114,7 +157,9 @@ static inline void _update_checksum(uint8_t* ck_a, uint8_t* ck_b, uint8_t b)
     *ck_b += *ck_a;
 }
 
-int eva8m_send_ubx_packet(eva8m_t* dev, eva8m_class_id_t msg_class_id, uint8_t* buffer, size_t buflen)
+int eva8m_send_ubx_packet(eva8m_t* dev,
+                          eva8m_class_id_t msg_class_id,
+                          uint8_t* buffer, size_t buflen)
 {
     int result;
     uint8_t header[2] = { 0xb5, 0x62 };
@@ -289,6 +334,11 @@ static void _eva8m_receive_ubx_sm_update(eva8m_t* dev, uint8_t b)
     }
 }
 
+/**
+ * @brief   Reset the state machine
+ *
+ * @param[out] dev          Initialized device descriptor of EVA8M device
+ */
 static void _eva8m_reset_sm(eva8m_t* dev)
 {
     dev->state = EVA8M_RS_START;
@@ -302,14 +352,13 @@ static void _eva8m_reset_sm(eva8m_t* dev)
 
 int eva8m_receive_ubx_packet(eva8m_t* dev, uint16_t timeout)
 {
-    DEBUG("[EVA8M] eva8m_receive_ubx_packet\n");
+    // DEBUG("[EVA8M] eva8m_receive_ubx_packet\n");
 
     int result = 0;
     size_t buf_ix = 0;
 
     _eva8m_reset_sm(dev);
 
-    /* TODO implement timeout */
     xtimer_ticks64_t start_time = xtimer_now64();
     while (dev->state != EVA8M_RS_SAW_END &&
            xtimer_less(xtimer_diff32_64(xtimer_now64(), start_time),

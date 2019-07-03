@@ -106,6 +106,8 @@ typedef enum {
     UBX_ACK_ACK = 0x0501,
     UBX_CFG_PRT = 0x0600,
     UBX_CFG_MSG = 0x0601,
+    UBX_CFG_TP5 = 0x0631,
+    UBX_MON_VER = 0x0A04,
 } eva8m_class_id_t;
 
 /**
@@ -181,6 +183,23 @@ typedef struct {
 } eva8m_nav_pvt_t;
 
 /**
+ * @brief   Time Pulse Parameters (CFG-TP5)
+ */
+typedef struct {
+    uint8_t     tpIdx;          /**< Time pulse selection (0=TIMEPULSE, 1=TIMEPULSE2) */
+    uint8_t     version;        /**< Message version */
+    uint8_t     reserved1[2];   /**< Reserved */
+    int16_t     antCableDelay;  /**< Antenna cable delay */
+    int16_t     rfGroupDelay;   /**< RF group delay */
+    uint32_t    freqPeriod;     /**< Frequency or period time */
+    uint32_t    freqPeriodLock; /**< Frequency or period time when locked to GPS time */
+    uint32_t    pulseLenRatio;  /**< Pulse length or duty cycle */
+    uint32_t    pulseLenRatioLock;  /**< Pulse length or duty cycle when locked to GPS time */
+    int32_t     userConfigDelay;    /**< User configurable time pulse delay */
+    uint32_t    flags;          /**< Configuration flags */
+} eva8m_timepulseparm_t;
+
+/**
  * @brief   Initialize the given EVA8M device
  *
  * @param[out] dev          Initialized device descriptor of EVA8M device
@@ -230,6 +249,17 @@ int eva8m_read_byte(eva8m_t* dev, uint8_t* b);
  * @return                  I2C error code
  */
 int eva8m_get_port_config(eva8m_t* dev, eva8m_portconfig_t* portcfg);
+
+/**
+ * @brief   Read the Time Pulse parameters
+ *
+ * @param[in] dev           The device descriptor of EVA8M device
+ * @param[out] parm         Pointer for the result
+ *
+ * @return                  0 on success
+ * @return                  I2C error code
+ */
+int eva8m_get_timepulse_parm(eva8m_t* dev, eva8m_timepulseparm_t *parm);
 
 /**
  * @brief   Send UBX packet
