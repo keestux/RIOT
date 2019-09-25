@@ -323,7 +323,7 @@ static const adc_conf_chan_t adc_channels[] = {
                         Move PA03 SELECT jumper to EXT3 to connect. */
 };
 
-#define ADC_NUMOF                          (6U)
+#define ADC_NUMOF                          ARRAY_SIZE(adc_channels)
 /** @} */
 
 #ifdef __cplusplus

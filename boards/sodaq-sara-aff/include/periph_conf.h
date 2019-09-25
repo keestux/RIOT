@@ -183,7 +183,7 @@ static const adc_conf_chan_t adc_channels[] = {
     {GPIO_PIN(PA, 3), ADC_INPUTCTRL_MUXPOS_PIN1},     /* AREF */
 };
 
-#define ADC_NUMOF                          (11)
+#define ADC_NUMOF                          ARRAY_SIZE(adc_channels)
 /** @} */
 
 /**

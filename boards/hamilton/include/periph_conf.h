@@ -172,7 +172,7 @@ static const adc_conf_chan_t adc_channels[] = {
     {GPIO_PIN(PA, 8), ADC_INPUTCTRL_MUXPOS_PIN16},
 };
 
-#define ADC_NUMOF                          (3U)
+#define ADC_NUMOF                          ARRAY_SIZE(adc_channels)
 /** @} */
 
 /**

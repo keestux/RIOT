@@ -288,7 +288,8 @@ static const adc_conf_chan_t adc_channels[] = {
     {GPIO_PIN(PA, 7), ADC_INPUTCTRL_MUXPOS_PIN7},      /* EXT1, pin 4 */
 };
 
-#define ADC_NUMOF                          (2U)
+#define ADC_NUMOF                          ARRAY_SIZE(adc_channels)
+/** @} */
 /** @} */
 
 /**

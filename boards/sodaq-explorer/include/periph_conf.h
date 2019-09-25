@@ -184,7 +184,7 @@ static const adc_conf_chan_t adc_channels[] = {
     {GPIO_PIN(PA, 4), ADC_INPUTCTRL_MUXPOS_PIN4},     /* A6 (temperature) */
 };
 
-#define ADC_NUMOF                          (7U)
+#define ADC_NUMOF                          ARRAY_SIZE(adc_channels)
 /** @} */
 
 /**

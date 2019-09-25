@@ -232,7 +232,7 @@ static const adc_conf_chan_t adc_channels[] = {
     { GPIO_PIN(PA, 2), ADC_INPUTCTRL_MUXPOS_PIN0 },     /* Digital 6 */
 };
 
-#define ADC_NUMOF                          (6U)
+#define ADC_NUMOF                          ARRAY_SIZE(adc_channels)
 /** @} */
 
 /**
