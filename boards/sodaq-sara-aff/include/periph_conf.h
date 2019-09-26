@@ -162,11 +162,11 @@ static const uart_conf_t uart_config[] = {
  */
 
 /* ADC Default values */
-#define ADC_PRESCALER                      ADC_CTRLB_PRESCALER_DIV512
+#define ADC_PRESCALER                       ADC_CTRLB_PRESCALER_DIV512
 
-#define ADC_NEG_INPUT                      ADC_INPUTCTRL_MUXNEG_GND
-#define ADC_GAIN_FACTOR_DEFAULT            ADC_INPUTCTRL_GAIN_1X
-#define ADC_REF_DEFAULT                    ADC_REFCTRL_REFSEL_INT1V
+#define ADC_NEG_INPUT                       ADC_INPUTCTRL_MUXNEG_GND
+#define ADC_GAIN_FACTOR_DEFAULT             ADC_INPUTCTRL_GAIN_1X
+#define ADC_REF_DEFAULT                     ADC_REFCTRL_REFSEL_INT1V
 
 static const adc_conf_chan_t adc_channels[] = {
     /* port, pin, muxpos */
@@ -183,7 +183,7 @@ static const adc_conf_chan_t adc_channels[] = {
     {GPIO_PIN(PA, 3), ADC_INPUTCTRL_MUXPOS_PIN1},     /* AREF */
 };
 
-#define ADC_NUMOF                          ARRAY_SIZE(adc_channels)
+#define ADC_NUMOF                           ARRAY_SIZE(adc_channels)
 /** @} */
 
 /**
