@@ -155,6 +155,10 @@ static inline void cortexm_sleep_until_event(void)
 static inline void cortexm_sleep(int deep)
 {
     if (deep) {
+        /* Disable systick interrupt
+         * See https://www.avrfreaks.net/forum/samd21-samd21e16b-sporadically-locks-and-does-not-wake-standby-sleep-mode
+         */
+        SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
         SCB->SCR |=  (SCB_SCR_SLEEPDEEP_Msk);
     }
     else {
@@ -170,6 +174,10 @@ static inline void cortexm_sleep(int deep)
     __ISB();
 #endif
     irq_restore(state);
+    if (deep) {
+        // Enable systick interrupt
+        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+    }
 }
 
 /**
