@@ -261,8 +261,8 @@ int universal_address_compare_prefix(universal_address_container_t *entry,
     }
 
     /* Get the index of the first trailing `0` */
-    int i = 0;
-    for (i = entry->address_size-1; i >= 0; --i) {
+    size_t i = 0;
+    for (i = entry->address_size - 1; i > 0; --i) {
         if (prefix[i] != 0) {
             break;
         }
