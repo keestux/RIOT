@@ -336,6 +336,7 @@ typedef enum {
     NETDEV_CDC_ECM,
     NETDEV_TINYUSB,
     NETDEV_W5500,
+    NETDEV_UBLOX_G350,
     /* add more if needed */
 } netdev_type_t;
 /** @} */
