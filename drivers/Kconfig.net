@@ -16,4 +16,5 @@ rsource "mrf24j40/Kconfig"
 rsource "pn532/Kconfig"
 rsource "rn2xx3/Kconfig"
 rsource "slipdev/Kconfig"
+rsource "ublox_g350/Kconfig"
 endmenu # Network Device Drivers
