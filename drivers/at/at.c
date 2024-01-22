@@ -77,6 +77,21 @@ static void _event_process_urc(event_t *_event)
 }
 #endif
 
+/**
+ * @brief   Write a string to the modem
+ *
+ * @param[in]   dev         device to operate on
+ * @param[in]   str         a string, terminated with a nul byte
+ */
+static void _uart_write_str(at_dev_t *dev, const char *str);
+
+/**
+ * @brief   Write a command terminator
+ *
+ * @param[in]   dev         device to operate on
+ */
+static void _uart_write_cmd_eol(at_dev_t *dev);
+
 static void _isrpipe_write_one_wrapper(void *_dev, uint8_t data)
 {
     at_dev_t *dev = (at_dev_t *) _dev;
@@ -214,10 +229,8 @@ int at_recv_bytes_until_string(at_dev_t *dev, const char *string,
 
 int at_send_cmd(at_dev_t *dev, const char *command, uint32_t timeout)
 {
-    size_t cmdlen = strlen(command);
-
-    uart_write(dev->uart, (const uint8_t *)command, cmdlen);
-    uart_write(dev->uart, (const uint8_t *)CONFIG_AT_SEND_EOL, AT_SEND_EOL_LEN);
+    _uart_write_str(dev, command);
+    _uart_write_cmd_eol(dev);
 
     if (!IS_ACTIVE(CONFIG_AT_SEND_SKIP_ECHO)) {
         if (at_wait_bytes(dev, command, timeout)) {
@@ -565,4 +578,14 @@ void at_dev_poweron(at_dev_t *dev)
 void at_dev_poweroff(at_dev_t *dev)
 {
     uart_poweroff(dev->uart);
+}
+
+static void _uart_write_str(at_dev_t *dev, const char *str)
+{
+    uart_write(dev->uart, (const uint8_t *)str, strlen(str));
+}
+
+static void _uart_write_cmd_eol(at_dev_t *dev)
+{
+    _uart_write_str(dev, CONFIG_AT_SEND_EOL);
 }
