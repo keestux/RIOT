@@ -404,12 +404,10 @@ out:
 
 int at_send_cmd_wait_prompt(at_dev_t *dev, const char *command, uint32_t timeout)
 {
-    unsigned cmdlen = strlen(command);
-
     at_drain(dev);
 
-    uart_write(dev->uart, (const uint8_t *)command, cmdlen);
-    uart_write(dev->uart, (const uint8_t *)CONFIG_AT_SEND_EOL, AT_SEND_EOL_LEN);
+    _uart_write_str(dev, command);
+    _uart_write_cmd_eol(dev);
 
     if (!IS_ACTIVE(CONFIG_AT_SEND_SKIP_ECHO)) {
         if (at_wait_bytes(dev, command, timeout)) {
