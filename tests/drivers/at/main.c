@@ -28,6 +28,8 @@
 #include "shell.h"
 #include "timex.h"
 
+#include "board.h"
+#include "periph/gpio.h"
 #include "periph/uart.h"
 
 static at_dev_t at_dev;
@@ -181,6 +183,18 @@ static int power_on(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
+
+    printf("SARA_STATUS: %d\n", gpio_read(SARA_STATUS_PIN));
+    SARA_ENABLE_ON;
+    SARA_TX_ENABLE_ON;
+    printf("SARA_STATUS: %d\n", gpio_read(SARA_STATUS_PIN));
+
+    gpio_init(SARA_R4XX_PWR_ON_PIN, GPIO_OUT);
+    SARA_R4XX_PWR_ON_OFF;
+    ztimer_sleep(ZTIMER_MSEC, 2000);
+    SARA_R4XX_PWR_ON_ON;
+    gpio_init(SARA_R4XX_PWR_ON_PIN, GPIO_IN);
+    printf("SARA_STATUS: %d\n", gpio_read(SARA_STATUS_PIN));
 
     at_dev_poweron(&at_dev);
 
