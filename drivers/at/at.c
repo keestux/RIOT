@@ -229,6 +229,8 @@ int at_recv_bytes_until_string(at_dev_t *dev, const char *string,
 
 int at_send_cmd(at_dev_t *dev, const char *command, uint32_t timeout)
 {
+    at_drain(dev);
+
     _uart_write_str(dev, command);
     _uart_write_cmd_eol(dev);
 
