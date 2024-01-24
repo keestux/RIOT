@@ -117,6 +117,7 @@ int at_dev_init(at_dev_t *dev, uart_t uart, uint32_t baudrate, char *buf, size_t
     dev->awaiting_response = false;
     dev->event.handler = _event_process_urc;
 #endif
+    dev->echo_off = false;
 
     isrpipe_init(&dev->isrpipe, (uint8_t *)buf, bufsize);
 
@@ -240,15 +241,19 @@ int at_send_cmd(at_dev_t *dev, const char *command, uint32_t timeout)
     _uart_write_str(dev, command);
     _uart_write_cmd_eol(dev);
 
-    if (!IS_ACTIVE(CONFIG_AT_SEND_SKIP_ECHO)) {
-        if (at_wait_bytes(dev, command, timeout)) {
+    if (!dev->echo_off) {
+        /* FIXME at_expect_bytes or at_wait_bytes? */
+        if (at_expect_bytes(dev, command, timeout)) {
             return -1;
         }
-
-        if (at_expect_bytes(dev, CONFIG_AT_SEND_EOL AT_RECV_EOL_1 AT_RECV_EOL_2,
-                            timeout)) {
+        if (at_expect_bytes(dev, CONFIG_AT_SEND_EOL, timeout)) {
             return -2;
         }
+    }
+
+    if (at_expect_bytes(dev, AT_RECV_EOL_1 AT_RECV_EOL_2,
+                        timeout)) {
+        return -2;
     }
 
     return 0;
@@ -417,8 +422,8 @@ int at_send_cmd_wait_prompt(at_dev_t *dev, const char *command, uint32_t timeout
     _uart_write_str(dev, command);
     _uart_write_cmd_eol(dev);
 
-    if (!IS_ACTIVE(CONFIG_AT_SEND_SKIP_ECHO)) {
-        if (at_wait_bytes(dev, command, timeout)) {
+    if (!dev->echo_off) {
+        if (at_expect_bytes(dev, command, timeout)) {
             return -1;
         }
         if (at_expect_bytes(dev, CONFIG_AT_SEND_EOL, timeout)) {
@@ -461,6 +466,16 @@ int at_send_cmd_wait_ok(at_dev_t *dev, const char *command, uint32_t timeout)
         res = at_readline_skip_empty(dev, resp_buf, sizeof(resp_buf), false, timeout);
     }
 
+    return res;
+}
+
+int at_send_echo_off(at_dev_t *dev, uint32_t timeout)
+{
+    int res;
+    res = at_send_cmd_wait_ok(dev, "ATE0", timeout);
+    if (res == 0) {
+        dev->echo_off = true;
+    }
     return res;
 }
 

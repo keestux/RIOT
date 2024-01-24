@@ -169,6 +169,19 @@ static int send_recv_bytes_until_string(int argc, char **argv)
     return 0;
 }
 
+static int send_echo_off(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+
+    int res;
+    res = at_send_echo_off(&at_dev, 1 * US_PER_SEC);
+
+    printf("Response: %d\n", res);
+
+    return 0;
+}
+
 static int drain(int argc, char **argv)
 {
     (void)argc;
@@ -368,6 +381,7 @@ static const shell_command_t shell_commands[] = {
     { "send_recv_bytes", "Send a command and wait response as raw bytes", send_recv_bytes },
     { "send_recv_until_string", "Send a command and receive response until "
       "the expected pattern arrives", send_recv_bytes_until_string },
+    { "send_echo_off", "Send ATE0 and wait OK", send_echo_off },
     { "drain", "Drain AT device", drain },
     { "power_on", "Power on AT device", power_on },
     { "power_off", "Power off AT device", power_off },

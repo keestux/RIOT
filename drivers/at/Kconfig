@@ -74,12 +74,6 @@ config AT_SEND_EOL_CR
 
 endchoice
 
-config AT_SEND_SKIP_ECHO
-    bool "Disable check for echo"
-    help
-        Enable this to disable check for echo after an AT
-        command is sent.
-
 config AT_RECV_OK
     string "OK reply string"
     default "OK"

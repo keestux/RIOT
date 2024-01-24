@@ -185,6 +185,7 @@ typedef struct {
     event_t event;          /**< event posted from ISR to process urc's */
 #endif
 #endif
+    bool echo_off;          /**< keep track echoing mode (was ATE0 sent?) */
 } at_dev_t;
 
 /**
@@ -369,6 +370,17 @@ ssize_t at_recv_bytes(at_dev_t *dev, char *bytes, size_t len, uint32_t timeout);
  * @retval     <0 otherwise
  */
 int at_send_cmd(at_dev_t *dev, const char *command, uint32_t timeout);
+
+/**
+ * @brief   Send the ATE0 command
+ *
+ * @param[in]   dev     device to operate on
+ * @param[in]   timeout timeout (in usec)
+ *
+ * @retval      0 on success
+ * @retval     <0 otherwise
+ */
+int at_send_echo_off(at_dev_t *dev, uint32_t timeout);
 
 /**
  * @brief   Read a line from device
