@@ -92,6 +92,12 @@ static void _uart_write_str(at_dev_t *dev, const char *str);
  */
 static void _uart_write_cmd_eol(at_dev_t *dev);
 
+/**
+ * @brief   Write one byte in the receive buffer
+ *
+ * @param[in]   dev         device to operate on
+ * @param[in]   data        the byte that was just received in the RX ISR
+ */
 static void _isrpipe_write_one_wrapper(void *_dev, uint8_t data)
 {
     at_dev_t *dev = (at_dev_t *) _dev;
