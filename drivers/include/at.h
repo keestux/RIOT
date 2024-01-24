@@ -18,7 +18,8 @@
  *
  * Furthermore, the library tries to cope with difficulties regarding different
  * line endings. It usually sends "<command><CR>", but expects
- * "<command>\LF\CR" as echo.
+ * "<command><CR><LF>" as echo. The <CR> is usually known by the S3 setting of
+ * the modem. The <LF> is usually know by the S4 setting of the modem.
  *
  * As a debugging aid, when compiled with "-DAT_PRINT_INCOMING=1", every input
  * byte gets printed.
@@ -76,13 +77,13 @@ extern "C" {
  * @{
  */
 /**
- * @brief End of line character to send after the AT command.
+ * @brief Command line termination character, S3.
+ *
+ *        This is the character that is sent right after the command.
  */
-#if IS_ACTIVE(CONFIG_AT_SEND_EOL_WINDOWS)
-#define CONFIG_AT_SEND_EOL   "\r\n"
-#elif IS_ACTIVE(CONFIG_AT_SEND_EOL_UNIX)
+#if IS_ACTIVE(CONFIG_AT_SEND_EOL_LF)
 #define CONFIG_AT_SEND_EOL   "\n"
-#elif IS_ACTIVE(CONFIG_AT_SEND_EOL_MAC)
+#elif IS_ACTIVE(CONFIG_AT_SEND_EOL_CR)
 #define CONFIG_AT_SEND_EOL   "\r"
 #endif
 
@@ -99,14 +100,14 @@ extern "C" {
 #endif
 
 /**
- * @brief 1st end of line character received (S3 aka CR character for a modem).
+ * @brief 1st end of line character received (same as the S3 character).
  */
 #ifndef AT_RECV_EOL_1
 #define AT_RECV_EOL_1   "\r"
 #endif
 
 /**
- * @brief 1st end of line character received (S4 aka LF character for a modem).
+ * @brief 2nd end of line character received (response formatting character S4).
  */
 #ifndef AT_RECV_EOL_2
 #define AT_RECV_EOL_2   "\n"

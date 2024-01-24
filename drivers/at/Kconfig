@@ -58,20 +58,18 @@ menuconfig KCONFIG_USEMODULE_AT
 if KCONFIG_USEMODULE_AT
 
 choice
-    bool "End of line character"
-    default AT_SEND_EOL_MAC
+    bool "End of line character (S3)"
+    default AT_SEND_EOL_CR
     help
         Select the EOL character to send after the AT command.
         The character sequence depends on target device.
         By default "\r", aka carriage return, is used.
+        Only in very rare circumstances you want to change this.
 
-config AT_SEND_EOL_WINDOWS
-    bool "\\r\\n"
-
-config AT_SEND_EOL_UNIX
+config AT_SEND_EOL_LF
     bool "\\n"
 
-config AT_SEND_EOL_MAC
+config AT_SEND_EOL_CR
     bool "\\r"
 
 endchoice
