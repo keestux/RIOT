@@ -77,7 +77,9 @@ static int send(int argc, char **argv)
     }
 
     ssize_t len;
-    if ((len = at_send_cmd_get_resp(&at_dev, argv[1], resp, sizeof(resp), 10 * US_PER_SEC)) < 0) {
+    len = at_send_cmd_get_resp(&at_dev, argv[1], resp, sizeof(resp), 10 * US_PER_SEC);
+    ztimer_sleep(ZTIMER_MSEC, 200);
+    if (len < 0) {
         puts("Error");
         return 1;
     }
@@ -94,7 +96,10 @@ static int send_ok(int argc, char **argv)
         return 1;
     }
 
-    if (at_send_cmd_wait_ok(&at_dev, argv[1], 10 * US_PER_SEC) < 0) {
+    int res;
+    res = at_send_cmd_wait_ok(&at_dev, argv[1], 10 * US_PER_SEC);
+    ztimer_sleep(ZTIMER_MSEC, 200);
+    if (res < 0) {
         puts("Error");
         return 1;
     }
