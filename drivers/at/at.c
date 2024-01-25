@@ -42,6 +42,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "at.h"
 #include "fmt.h"
@@ -56,6 +57,9 @@
 #ifndef AT_PRINT_INCOMING
 #define AT_PRINT_INCOMING (0)
 #endif
+#ifndef AT_PRINT_OUTGOING
+#define AT_PRINT_OUTGOING (0)
+#endif
 
 #if defined(MODULE_AT_URC_ISR_LOWEST)
 #define AT_EVENT_PRIO EVENT_PRIO_LOWEST
@@ -63,6 +67,10 @@
 #define AT_EVENT_PRIO EVENT_PRIO_MEDIUM
 #elif defined(MODULE_AT_URC_ISR_HIGHEST)
 #define AT_EVENT_PRIO EVENT_PRIO_HIGHEST
+#endif
+
+#if AT_PRINT_INCOMING || AT_PRINT_OUTGOING
+static bool _debug_at_start_of_line = true;
 #endif
 
 #if defined(MODULE_AT_URC)
@@ -124,6 +132,60 @@ int at_dev_init(at_dev_t *dev, uart_t uart, uint32_t baudrate, char *buf, size_t
     return uart_init(uart, baudrate, _isrpipe_write_one_wrapper, dev);
 }
 
+#if AT_PRINT_INCOMING
+void _debug_print_char(char c)
+{
+    static bool at_start_of_line = true;
+    if (c == '\n') {
+        /* Only <LF> is actually printed to stdout.
+            * Don't send <CR> to stdout because it will confuse the diagnostic
+            * output.
+            */
+        printf("\\n\n");
+        at_start_of_line = true;
+        _debug_at_start_of_line = true;
+    }
+    else {
+        if (at_start_of_line) {
+            if (!_debug_at_start_of_line) {
+                printf("\n");
+            }
+            printf("<< ");
+            at_start_of_line = false;
+            _debug_at_start_of_line = true;
+        }
+        if (c == '\r') {
+            printf("\\r");
+            _debug_at_start_of_line = false;
+        }
+        else {
+            print(&c, 1);
+        }
+    }
+}
+#else
+void _debug_print_char(char c)
+{
+    (void)c;
+}
+#endif
+
+#if AT_PRINT_INCOMING
+void _debug_print_chars(const char * str, int len)
+{
+    while (len) {
+        _debug_print_char(*str++);
+        len--;
+    }
+}
+#else
+void _debug_print_chars(const char * str, size_t len)
+{
+    (void)str;
+    (void)len;
+}
+#endif
+
 int at_expect_bytes(at_dev_t *dev, const char *bytes, uint32_t timeout)
 {
     int res = 0;
@@ -135,9 +197,7 @@ int at_expect_bytes(at_dev_t *dev, const char *bytes, uint32_t timeout)
     while (*bytes) {
         char c;
         if ((res = isrpipe_read_timeout(&dev->isrpipe, (uint8_t *)&c, 1, timeout)) == 1) {
-            if (AT_PRINT_INCOMING) {
-                print(&c, 1);
-            }
+            _debug_print_char(c);
             if (c != *bytes++) {
                 res = -1;
                 goto out;
@@ -183,6 +243,7 @@ ssize_t at_recv_bytes(at_dev_t *dev, char *bytes, size_t len, uint32_t timeout)
         int read_res;
         if ((read_res = isrpipe_read_timeout(&dev->isrpipe, (uint8_t *)resp_pos,
                                              1, timeout)) == 1) {
+            _debug_print_char(*resp_pos);
             resp_pos += read_res;
             len -= read_res;
         }
@@ -212,9 +273,7 @@ int at_recv_bytes_until_string(at_dev_t *dev, const char *string,
     while (*_string && len < *bytes_len) {
         char c;
         if ((res = isrpipe_read_timeout(&dev->isrpipe, (uint8_t *)&c, 1, timeout)) == 1) {
-            if (AT_PRINT_INCOMING) {
-                print(&c, 1);
-            }
+            _debug_print_char(c);
             if (c == *_string) {
                 _string++;
             }
@@ -497,9 +556,7 @@ ssize_t at_readline(at_dev_t *dev, char *resp_buf, size_t len, bool keep_eol, ui
         int read_res;
         if ((read_res = isrpipe_read_timeout(&dev->isrpipe, (uint8_t *)resp_pos,
                                              1, timeout)) == 1) {
-            if (AT_PRINT_INCOMING) {
-                print(resp_pos, read_res);
-            }
+            _debug_print_chars(resp_pos, read_res);
             if (sizeof(eol) > 2 && *resp_pos == eol[0]) {
                 if (!keep_eol) {
                     continue;
@@ -601,8 +658,73 @@ void at_dev_poweroff(at_dev_t *dev)
     uart_poweroff(dev->uart);
 }
 
+#if AT_PRINT_OUTGOING
+void _debug_print_outgoing_char(char c)
+{
+    static bool at_start_of_line = true;
+    if (isprint(c)) {
+        if (at_start_of_line) {
+            if (!_debug_at_start_of_line) {
+                printf("\n");
+            }
+            printf(">> ");
+            at_start_of_line = false;
+            _debug_at_start_of_line = false;
+        }
+        putchar(c);
+    }
+    else {
+        switch (c) {
+            // case '\n':
+            //     printf("\\n");
+            //     at_start_of_line = true;
+            //     _debug_at_start_of_line = true;
+            //     break;
+            case '\r':
+                /* This is the "Command Termination Character (S3)" */
+                printf("\\r\n");
+                at_start_of_line = true;
+                _debug_at_start_of_line = true;
+                break;
+            default:
+                printf("\\x%02x", c);
+                break;
+        }
+    }
+}
+#else
+void _debug_print_outgoing_char(char c)
+{
+    (void)c;
+}
+#endif
+
+#if AT_PRINT_OUTGOING
+void _debug_print_outgoing_chars(const char *str)
+{
+    while (*str) {
+        _debug_print_outgoing_char(*str++);
+    }
+}
+#else
+void _debug_print_outgoing_chars(const char *str)
+{
+    (void)str;
+}
+#endif
+
+/**
+ * @brief   Send a (NUL-terminated) string to a device
+ *
+ * @param[in]   dev     device to operate on
+ * @param[in]   str     the string to send
+ *
+ * This function does basically the same as at_send_bytes, except that the
+ * input is guaranteed to be a string.
+ */
 static void _uart_write_str(at_dev_t *dev, const char *str)
 {
+    _debug_print_outgoing_chars(str);
     uart_write(dev->uart, (const uint8_t *)str, strlen(str));
 }
 
