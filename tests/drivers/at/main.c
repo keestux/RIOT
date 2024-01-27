@@ -401,7 +401,18 @@ static const shell_command_t shell_commands[] = {
 
 int main(void)
 {
+    ztimer_sleep(ZTIMER_MSEC, 2000);
+
     puts("AT command test app");
+
+    /* Some initial commands for Kees, with his SODAQ SARA SFF with Ublox-N310 */
+    char *init_argv[4] = {"init", "1", "115200", NULL};
+    init(3, init_argv);
+
+    power_on(0, NULL);
+
+    char *send_AT_argv[3] = {"send", "AT", NULL};
+    send(2, send_AT_argv);
 
     /* run the shell */
     char line_buf[SHELL_DEFAULT_BUFSIZE];
