@@ -405,13 +405,15 @@ int main(void)
 
     puts("AT command test app");
 
-    /* Some initial commands for Kees, with his SODAQ SARA SFF with Ublox-N310 */
-    char *init_argv[4] = {"init", "1", "115200", NULL};
+    /* Some initial commands for Kees, with his SODAQ SARA SFF with Ublox-N310/R410 */
+    char *init_argv[4] = {"init", "1", "230400", NULL};
     init(3, init_argv);
 
     power_on(0, NULL);
 
     char *send_AT_argv[3] = {"send", "AT", NULL};
+    send(2, send_AT_argv);
+    send(2, send_AT_argv);
     send(2, send_AT_argv);
 
     /* run the shell */
