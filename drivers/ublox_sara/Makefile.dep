@@ -1,0 +1,5 @@
+FEATURES_REQUIRED += periph_uart
+USEMODULE += isrpipe
+USEMODULE += isrpipe_read_timeout
+USEMODULE += ztimer
+USEMODULE += ztimer_usec
