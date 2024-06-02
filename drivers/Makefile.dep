@@ -52,6 +52,10 @@ ifneq (,$(filter ethos_%,$(USEMODULE)))
   USEMODULE += ethos
 endif
 
+ifneq (,$(filter eva8m,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_i2c
+endif
+
 ifneq (,$(filter ft6% ft5% ft3%,$(USEMODULE)))
   USEMODULE += ft5x06
 endif
